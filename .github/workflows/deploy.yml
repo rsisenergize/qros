@@ -64,6 +64,10 @@ jobs:
           name: qros_build
           path: build/
 
+      # 👇 Checkout repo to make .env.dev available
+      - name: 🧩 Checkout code
+        uses: actions/checkout@v4
+
       - name: 🔐 Copy Dev Environment File
         run: cp .env.dev build/.env
 
@@ -83,7 +87,7 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            cd /home/${{ secrets.SSH_USER_DEV }}/public_html/dev
+            cd /home/${{ secrets.SSH_USER }}/public_html/dev
             php artisan migrate --force
             php artisan optimize:clear
             php artisan config:cache
@@ -107,6 +111,9 @@ jobs:
           name: qros_build
           path: build/
 
+      - name: 🧩 Checkout code
+        uses: actions/checkout@v4
+
       - name: 🔐 Copy Test Environment File
         run: cp .env.test build/.env
 
@@ -126,7 +133,7 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            cd /home/${{ secrets.SSH_USER_TEST }}/public_html/test
+            cd /home/${{ secrets.SSH_USER }}/public_html/test
             php artisan migrate --force
             php artisan optimize:clear
             php artisan config:cache
@@ -150,6 +157,9 @@ jobs:
           name: qros_build
           path: build/
 
+      - name: 🧩 Checkout code
+        uses: actions/checkout@v4
+
       - name: 🔐 Copy Preprod Environment File
         run: cp .env.preprod build/.env
 
@@ -169,7 +179,7 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            cd /home/${{ secrets.SSH_USER_PREPROD }}/public_html/preprod
+            cd /home/${{ secrets.SSH_USER }}/public_html/preprod
             php artisan migrate --force
             php artisan optimize:clear
             php artisan config:cache
@@ -193,6 +203,9 @@ jobs:
           name: qros_build
           path: build/
 
+      - name: 🧩 Checkout code
+        uses: actions/checkout@v4
+
       - name: 🔐 Copy Production Environment File
         run: cp .env.prod build/.env
 
@@ -212,7 +225,7 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            cd /home/${{ secrets.SSH_USER_PROD }}/public_html
+            cd /home/${{ secrets.SSH_USER }}/public_html
             php artisan migrate --force
             php artisan optimize:clear
             php artisan config:cache
