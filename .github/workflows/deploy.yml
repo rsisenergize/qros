@@ -64,12 +64,13 @@ jobs:
           name: qros_build
           path: build/
 
-      # 👇 Checkout repo to make .env.dev available
       - name: 🧩 Checkout code
         uses: actions/checkout@v4
 
       - name: 🔐 Copy Dev Environment File
-        run: cp .env.dev build/.env
+        run: |
+          mkdir -p build
+          cp .env.dev build/.env
 
       - name: 🚀 Upload to Dev cPanel
         uses: SamKirkland/FTP-Deploy-Action@v4.3.4
@@ -115,7 +116,9 @@ jobs:
         uses: actions/checkout@v4
 
       - name: 🔐 Copy Test Environment File
-        run: cp .env.test build/.env
+        run: |
+          mkdir -p build
+          cp .env.test build/.env
 
       - name: 🚀 Upload to Test cPanel
         uses: SamKirkland/FTP-Deploy-Action@v4.3.4
@@ -161,7 +164,9 @@ jobs:
         uses: actions/checkout@v4
 
       - name: 🔐 Copy Preprod Environment File
-        run: cp .env.preprod build/.env
+        run: |
+          mkdir -p build
+          cp .env.preprod build/.env
 
       - name: 🚀 Upload to Preprod cPanel
         uses: SamKirkland/FTP-Deploy-Action@v4.3.4
@@ -207,7 +212,9 @@ jobs:
         uses: actions/checkout@v4
 
       - name: 🔐 Copy Production Environment File
-        run: cp .env.prod build/.env
+        run: |
+          mkdir -p build
+          cp .env.prod build/.env
 
       - name: 🚀 Upload to Production cPanel
         uses: SamKirkland/FTP-Deploy-Action@v4.3.4
