@@ -1,0 +1,168 @@
+name: 🚀 Qros Multi-Environment CI/CD
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  # ===========================================================
+  # 1️⃣ Build Job
+  # ===========================================================
+  build:
+    name: 🧱 Build Qros
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 🧩 Checkout code
+        uses: actions/checkout@v4
+
+      - name: ⚙️ Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, bcmath, intl, mysql, gd, exif, pcntl
+
+      - name: 📦 Install Composer Dependencies
+        run: composer install --no-dev --optimize-autoloader
+
+      - name: 🧰 Build Frontend (Tailwind/NPM)
+        run: |
+          npm install
+          npm run build || npm run prod || echo "No npm build step found"
+
+      - name: 📁 Prepare Deployment Package
+        run: |
+          mkdir deploy
+          rsync -av --exclude='.git*' --exclude='node_modules' --exclude='tests' \
+            --exclude='storage/framework/*' --exclude='storage/logs/*' \
+            --exclude='.env*' ./ ./deploy/
+
+      - name: 📤 Upload Build Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: qros_build
+          path: deploy/
+
+  # ===========================================================
+  # 2️⃣ DEV DEPLOYMENT (Auto)
+  # ===========================================================
+  deploy-dev:
+    name: 🌱 Deploy to Dev
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - name: ⬇️ Download Build
+        uses: actions/download-artifact@v3
+        with:
+          name: qros_build
+          path: build/
+
+      - name: 🔐 Copy Dev Environment File
+        run: cp .env.dev build/.env
+
+      - name: 🚀 Deploy to Dev cPanel
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+        with:
+          server: ${{ secrets.CPANEL_HOST_DEV }}
+          username: ${{ secrets.CPANEL_USERNAME_DEV }}
+          password: ${{ secrets.CPANEL_PASSWORD_DEV }}
+          server-dir: ${{ secrets.CPANEL_PATH_DEV }}
+          local-dir: build/
+
+  # ===========================================================
+  # 3️⃣ TEST DEPLOYMENT (Manual Approval)
+  # ===========================================================
+  deploy-test:
+    name: 🧪 Deploy to Test
+    runs-on: ubuntu-latest
+    needs: deploy-dev
+    environment:
+      name: test
+      url: https://test.qros.in
+      # Requires manual approval
+      deployment_branch_policy:
+        protected_branches: true
+
+    steps:
+      - uses: actions/download-artifact@v3
+        with:
+          name: qros_build
+          path: build/
+
+      - name: 🔐 Copy Test Environment File
+        run: cp .env.test build/.env
+
+      - name: 🚀 Deploy to Test cPanel
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+        with:
+          server: ${{ secrets.CPANEL_HOST_TEST }}
+          username: ${{ secrets.CPANEL_USERNAME_TEST }}
+          password: ${{ secrets.CPANEL_PASSWORD_TEST }}
+          server-dir: ${{ secrets.CPANEL_PATH_TEST }}
+          local-dir: build/
+
+  # ===========================================================
+  # 4️⃣ PREPROD DEPLOYMENT (Manual Approval)
+  # ===========================================================
+  deploy-preprod:
+    name: 🚀 Deploy to Preprod
+    runs-on: ubuntu-latest
+    needs: deploy-test
+    environment:
+      name: preprod
+      url: https://preprod.qros.in
+      # Requires manual approval
+      deployment_branch_policy:
+        protected_branches: true
+
+    steps:
+      - uses: actions/download-artifact@v3
+        with:
+          name: qros_build
+          path: build/
+
+      - name: 🔐 Copy Preprod Environment File
+        run: cp .env.preprod build/.env
+
+      - name: 🚀 Deploy to Preprod cPanel
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+        with:
+          server: ${{ secrets.CPANEL_HOST_PREPROD }}
+          username: ${{ secrets.CPANEL_USERNAME_PREPROD }}
+          password: ${{ secrets.CPANEL_PASSWORD_PREPROD }}
+          server-dir: ${{ secrets.CPANEL_PATH_PREPROD }}
+          local-dir: build/
+
+  # ===========================================================
+  # 5️⃣ PRODUCTION DEPLOYMENT (Manual Final Approval)
+  # ===========================================================
+  deploy-prod:
+    name: 🏁 Deploy to Production
+    runs-on: ubuntu-latest
+    needs: deploy-preprod
+    environment:
+      name: production
+      url: https://qros.in
+      # Requires manual approval
+      deployment_branch_policy:
+        protected_branches: true
+
+    steps:
+      - uses: actions/download-artifact@v3
+        with:
+          name: qros_build
+          path: build/
+
+      - name: 🔐 Copy Production Environment File
+        run: cp .env.prod build/.env
+
+      - name: 🚀 Deploy to Production cPanel
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+        with:
+          server: ${{ secrets.CPANEL_HOST_PROD }}
+          username: ${{ secrets.CPANEL_USERNAME_PROD }}
+          password: ${{ secrets.CPANEL_PASSWORD_PROD }}
+          server-dir: ${{ secrets.CPANEL_PATH_PROD }}
+          local-dir: build/

@@ -1,0 +1,6 @@
+item_name,description,price,category_name,menu_name,type,is_available,show_on_customer_site
+Margherita Pizza,Classic tomato and mozzarella pizza,12.99,Italian Cuisine,Italian Menu,veg,yes,yes
+Chicken Alfredo,Creamy pasta with grilled chicken,15.99,Italian Cuisine,Italian Menu,non-veg,yes,yes
+Caesar Salad,Fresh romaine lettuce with caesar dressing,8.99,Salads,Healthy Menu,veg,yes,yes
+Grilled Salmon,Atlantic salmon with herbs,18.99,Seafood,Healthy Menu,non-veg,yes,yes
+Chocolate Cake,Rich chocolate layer cake,6.99,Desserts,Sweet Treats,veg,yes,yes

@@ -1,0 +1,189 @@
+/* Bulk Upload Animations and Styles */
+
+/* Progress bar animations */
+@keyframes progress-shimmer {
+    0% {
+        background-position: -200px 0;
+    }
+    100% {
+        background-position: calc(200px + 100%) 0;
+    }
+}
+
+.progress-bar-animated {
+    background: linear-gradient(90deg, #3b82f6, #1d4ed8, #3b82f6);
+    background-size: 200px 100%;
+    animation: progress-shimmer 2s infinite linear;
+}
+
+/* Bounce animation for processing dots */
+@keyframes bounce-delayed {
+    0%, 20%, 50%, 80%, 100% {
+        transform: translateY(0);
+    }
+    40% {
+        transform: translateY(-10px);
+    }
+    60% {
+        transform: translateY(-5px);
+    }
+}
+
+.bounce-dot-1 {
+    animation: bounce-delayed 1.4s infinite;
+}
+
+.bounce-dot-2 {
+    animation: bounce-delayed 1.4s infinite 0.1s;
+}
+
+.bounce-dot-3 {
+    animation: bounce-delayed 1.4s infinite 0.2s;
+}
+
+/* File upload area hover effects */
+.upload-area {
+    transition: all 0.3s ease;
+}
+
+.upload-area:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+}
+
+.upload-area.dragover {
+    border-color: #3b82f6;
+    background-color: #eff6ff;
+    transform: scale(1.02);
+}
+
+/* Step indicator animations */
+.step-indicator {
+    transition: all 0.3s ease;
+}
+
+.step-indicator.active {
+    transform: scale(1.1);
+}
+
+.step-indicator.completed {
+    animation: pulse-success 0.6s ease-in-out;
+}
+
+@keyframes pulse-success {
+    0% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.2);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+/* Success/Error state animations */
+.result-card {
+    animation: slideInUp 0.5s ease-out;
+}
+
+@keyframes slideInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Loading spinner */
+.spinner {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Progress bar glow effect */
+.progress-glow {
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.5);
+}
+
+/* File input styling */
+.file-input-custom {
+    position: relative;
+    overflow: hidden;
+    display: inline-block;
+}
+
+.file-input-custom input[type=file] {
+    position: absolute;
+    left: -9999px;
+}
+
+.file-input-custom label {
+    display: inline-block;
+    padding: 12px 24px;
+    background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+    color: white;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-weight: 500;
+}
+
+.file-input-custom label:hover {
+    background: linear-gradient(135deg, #2563eb, #1e40af);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+}
+
+/* Modal entrance animation */
+.modal-enter {
+    animation: modalSlideIn 0.3s ease-out;
+}
+
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: scale(0.9) translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+/* Dark mode adjustments */
+@media (prefers-color-scheme: dark) {
+    .upload-area.dragover {
+        background-color: #1e3a8a;
+    }
+
+    .progress-glow {
+        box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
+    }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .step-indicator {
+        font-size: 0.875rem;
+    }
+
+    .upload-area {
+        padding: 1.5rem;
+    }
+
+    .result-card {
+        padding: 1rem;
+    }
+}

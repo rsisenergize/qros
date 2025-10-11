@@ -1,0 +1,297 @@
+<html lang="en" dir="ltr">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Demo Restaurant - Order #4</title>
+        <style>
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+                font-family: "Arial", sans-serif;
+            }
+
+            [dir="rtl"] {
+                text-align: right;
+            }
+
+            [dir="ltr"] {
+                text-align: left;
+            }
+
+            .receipt {
+                width: 80mm;
+                padding: 6.35mm;
+                page-break-after: always;
+            }
+
+            .header {
+                text-align: center;
+                margin-bottom: 3mm;
+            }
+
+            .restaurant-logo {
+                width: 20px;
+                height: 20px;
+                margin-top: 3px;
+                object-fit: contain;
+            }
+
+            .restaurant-name {
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                gap: 5px;
+                font-size: 14pt;
+                font-weight: bold;
+                margin-bottom: 1mm;
+            }
+
+            .restaurant-info {
+                font-size: 9pt;
+                margin-bottom: 1mm;
+            }
+
+            .order-info {
+                border-top: 1px dashed #000;
+                border-bottom: 1px dashed #000;
+                padding: 2mm 0;
+                margin-bottom: 3mm;
+                font-size: 9pt;
+            }
+
+            . {
+                font-weight: bold;
+            }
+
+            .items-table {
+                width: 100%;
+                border-collapse: collapse;
+                margin-bottom: 3mm;
+                font-size: 9pt;
+            }
+
+            .items-table th {
+                padding: 1mm;
+                border-bottom: 1px solid #000;
+            }
+
+            [dir="rtl"] .items-table th {
+                text-align: right;
+            }
+
+            [dir="ltr"] .items-table th {
+                text-align: left;
+            }
+
+            .items-table td {
+                padding: 1mm 0;
+                vertical-align: top;
+            }
+
+            .qty {
+                width: 10%;
+                text-align: center;
+            }
+
+            .description {
+                width: 50%;
+            }
+
+            .payment-method {
+                width: 28%;
+            }
+
+            [dir="rtl"] .price,
+            [dir="rtl"] .amount {
+                text-align: left;
+            }
+
+            [dir="ltr"] .price,
+            [dir="ltr"] .amount {
+                text-align: right;
+            }
+
+            .price {
+                width: 20%;
+            }
+
+            .amount {
+                width: 20%;
+            }
+
+            .summary {
+                font-size: 9pt;
+                margin-top: 2mm;
+            }
+
+            .summary-row {
+                display: flex;
+                justify-content: space-between;
+                margin-bottom: 1mm;
+            }
+
+            .summary-grid {
+                display: grid;
+                grid-template-columns: repeat(2, 1fr);
+                justify-content: space-between;
+                gap: 5px 55px;
+                margin-bottom: 1mm;
+            }
+
+            .total {
+                font-weight: bold;
+                font-size: 11pt;
+                border-top: 1px solid #000;
+                padding-top: 1mm;
+                margin-top: 1mm;
+            }
+
+            .footer {
+                text-align: center;
+                margin-top: 3mm;
+                font-size: 9pt;
+                padding-top: 2mm;
+                border-top: 1px dashed #000;
+            }
+
+            .qr_code {
+                margin-top: 5mm;
+                margin-bottom: 3mm;
+            }
+
+            .modifiers {
+                font-size: 8pt;
+                color: #555;
+            }
+
+            @media print {
+                @page {
+                    margin: 0;
+                    size: 80mm auto;
+                }
+            }
+        </style>
+    </head>
+
+    <body data-new-gr-c-s-check-loaded="14.1243.0" data-gr-ext-installed="">
+        <div class="receipt">
+            <div class="header">
+                <div class="restaurant-name">
+                    <span> </span>
+                    <span>Demo Restaurant</span>
+                </div>
+
+                <div class="restaurant-info">
+                    95215 Wolff Shoals Apt. 597 Dudleymouth, DC 97777-1897
+                </div>
+                <div class="restaurant-info">Phone: +19083383390</div>
+            </div>
+
+            <div class="order-info">
+                <div class="">
+                    <div class="summary-row">
+                        <span>Order #<span class="order-number">4</span></span>
+                        <span class="space_left">07 Jul 2025 03:47</span>
+                    </div>
+                    <div class="summary-grid"></div>
+
+                    <div class="summary-row"></div>
+                    <div class="summary-row"></div>
+                </div>
+            </div>
+
+            <table class="items-table">
+                <thead>
+                    <tr>
+                        <th class="qty">Qty</th>
+                        <th class="description">Item Name</th>
+                        <th class="price">Price</th>
+                        <th class="amount">Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="qty">1</td>
+                        <td class="description">Medu Vada</td>
+                        <td class="price">$80.00</td>
+                        <td class="amount">$80.00</td>
+                    </tr>
+                    <tr>
+                        <td class="qty">2</td>
+                        <td class="description">Idli Sambar</td>
+                        <td class="price">$90.00</td>
+                        <td class="amount">$180.00</td>
+                    </tr>
+                    <tr>
+                        <td class="qty">1</td>
+                        <td class="description">Uttapam</td>
+                        <td class="price">$130.00</td>
+                        <td class="amount">$130.00</td>
+                    </tr>
+                    <tr>
+                        <td class="qty">3</td>
+                        <td class="description">Masala Dosa</td>
+                        <td class="price">$120.00</td>
+                        <td class="amount">$360.00</td>
+                    </tr>
+                    <tr>
+                        <td class="qty">3</td>
+                        <td class="description">Chilli Paneer</td>
+                        <td class="price">$240.00</td>
+                        <td class="amount">$720.00</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="summary">
+                <div class="summary-row">
+                    <span>Sub Total:</span>
+                    <span>$1,470.00</span>
+                </div>
+
+                <div class="summary-row">
+                    <span>SGST (2.50%):</span>
+                    <span>$36.75</span>
+                </div>
+                <div class="summary-row">
+                    <span>CGST (2.50%):</span>
+                    <span>$36.75</span>
+                </div>
+
+                <div class="summary-row">
+                    <span>Balance Returned:</span>
+                    <span>$0.00</span>
+                </div>
+
+                <div class="summary-row total">
+                    <span>Total:</span>
+                    <span>$1,544.00</span>
+                </div>
+            </div>
+
+            <div class="footer">
+                <p>Thank you for your visit!</p>
+
+                <div class="summary">
+                    <table class="items-table">
+                        <thead>
+                            <tr>
+                                <th class="qty">Amount</th>
+                                <th class="payment-method">Payment Method</th>
+                                <th class="price">Date &amp; Time</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td class="qty">$1,544.00</td>
+                                <td class="payment-method">Card</td>
+                                <td class="price">09 Jul, 2025 03:47 AM</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </body>
+</html>
