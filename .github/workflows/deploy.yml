@@ -1,4 +1,4 @@
-name: 🚀 Qros Multi-Environment CI/CD (SSH-based & Safe Deploy)
+name: 🚀 Qros Multi-Environment CI/CD (SSH-based & Stable)
 
 on:
   push:
@@ -38,7 +38,7 @@ jobs:
 
       - name: 📁 Prepare Safe Deployment Package
         run: |
-          mkdir deploy
+          mkdir -p deploy
           rsync -av \
             --exclude='.git*' \
             --exclude='node_modules' \
@@ -48,7 +48,14 @@ jobs:
             --exclude='storage/logs/*' \
             --exclude='storage/framework/*' \
             --exclude='public/uploads/*' \
-            ./ ./deploy/
+            ./ deploy/
+
+      - name: 🧾 Debug deploy contents
+        run: |
+          echo "=== Deploy folder contents ==="
+          ls -la deploy || echo "deploy folder missing"
+          echo "=== Laravel root check ==="
+          if [ -f deploy/artisan ]; then echo "✅ Artisan found"; else echo "❌ Artisan missing"; fi
 
       - name: 📤 Upload Build Artifact
         uses: actions/upload-artifact@v4
@@ -85,7 +92,7 @@ jobs:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: "build/*"
+          source: "build/."
           target: ${{ secrets.DEPLOY_PATH_DEV }}
 
       - name: 🧠 Run Laravel Commands (Dev)
@@ -96,6 +103,7 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             cd ${{ secrets.DEPLOY_PATH_DEV }}
+            if [ ! -f artisan ]; then echo "❌ Artisan not found in ${{ secrets.DEPLOY_PATH_DEV }}"; exit 1; fi
             php artisan migrate --force
             php artisan optimize:clear
             php artisan config:cache
@@ -133,7 +141,7 @@ jobs:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: "build/*"
+          source: "build/."
           target: ${{ secrets.DEPLOY_PATH_TEST }}
 
       - name: 🧠 Run Laravel Commands (Test)
@@ -144,6 +152,7 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             cd ${{ secrets.DEPLOY_PATH_TEST }}
+            if [ ! -f artisan ]; then echo "❌ Artisan not found in ${{ secrets.DEPLOY_PATH_TEST }}"; exit 1; fi
             php artisan migrate --force
             php artisan optimize:clear
             php artisan config:cache
@@ -181,7 +190,7 @@ jobs:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: "build/*"
+          source: "build/."
           target: ${{ secrets.DEPLOY_PATH_PREPROD }}
 
       - name: 🧠 Run Laravel Commands (Preprod)
@@ -192,6 +201,7 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             cd ${{ secrets.DEPLOY_PATH_PREPROD }}
+            if [ ! -f artisan ]; then echo "❌ Artisan not found in ${{ secrets.DEPLOY_PATH_PREPROD }}"; exit 1; fi
             php artisan migrate --force
             php artisan optimize:clear
             php artisan config:cache
@@ -229,7 +239,7 @@ jobs:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: "build/*"
+          source: "build/."
           target: ${{ secrets.DEPLOY_PATH_PROD }}
 
       - name: 🧠 Run Laravel Commands (Production)
@@ -240,6 +250,7 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             cd ${{ secrets.DEPLOY_PATH_PROD }}
+            if [ ! -f artisan ]; then echo "❌ Artisan not found in ${{ secrets.DEPLOY_PATH_PROD }}"; exit 1; fi
             php artisan migrate --force
             php artisan optimize:clear
             php artisan config:cache
