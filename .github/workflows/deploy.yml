@@ -1,4 +1,4 @@
-name: 🚀 Qros Multi-Environment CI/CD
+name: 🚀 Qros Multi-Environment CI/CD (SSH-based & Safe Deploy)
 
 on:
   push:
@@ -36,12 +36,19 @@ jobs:
             npm run build || npm run prod || echo "No npm build step found"
           fi
 
-      - name: 📁 Prepare Deployment Package
+      - name: 📁 Prepare Safe Deployment Package
         run: |
           mkdir deploy
-          rsync -av --exclude='.git*' --exclude='node_modules' --exclude='tests' \
-            --exclude='storage/framework/*' --exclude='storage/logs/*' \
-            --exclude='.env*' ./ ./deploy/
+          rsync -av \
+            --exclude='.git*' \
+            --exclude='node_modules' \
+            --exclude='tests' \
+            --exclude='.env*' \
+            --exclude='storage/app/public/*' \
+            --exclude='storage/logs/*' \
+            --exclude='storage/framework/*' \
+            --exclude='public/uploads/*' \
+            ./ ./deploy/
 
       - name: 📤 Upload Build Artifact
         uses: actions/upload-artifact@v4
@@ -72,14 +79,14 @@ jobs:
           mkdir -p build
           cp .env.dev build/.env
 
-      - name: 🚀 Upload to Dev cPanel
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+      - name: 🚀 Upload via SSH (SCP)
+        uses: appleboy/scp-action@v0.1.7
         with:
-          server: ${{ secrets.CPANEL_HOST_DEV }}
-          username: ${{ secrets.CPANEL_USERNAME_DEV }}
-          password: ${{ secrets.CPANEL_PASSWORD_DEV }}
-          server-dir: ${{ secrets.CPANEL_PATH_DEV }}
-          local-dir: build/
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: "build/*"
+          target: ${{ secrets.DEPLOY_PATH_DEV }}
 
       - name: 🧠 Run Laravel Commands (Dev)
         uses: appleboy/ssh-action@v1.0.3
@@ -88,7 +95,7 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            cd /home/${{ secrets.SSH_USER }}/public_html/dev
+            cd ${{ secrets.DEPLOY_PATH_DEV }}
             php artisan migrate --force
             php artisan optimize:clear
             php artisan config:cache
@@ -120,14 +127,14 @@ jobs:
           mkdir -p build
           cp .env.test build/.env
 
-      - name: 🚀 Upload to Test cPanel
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+      - name: 🚀 Upload via SSH (SCP)
+        uses: appleboy/scp-action@v0.1.7
         with:
-          server: ${{ secrets.CPANEL_HOST_TEST }}
-          username: ${{ secrets.CPANEL_USERNAME_TEST }}
-          password: ${{ secrets.CPANEL_PASSWORD_TEST }}
-          server-dir: ${{ secrets.CPANEL_PATH_TEST }}
-          local-dir: build/
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: "build/*"
+          target: ${{ secrets.DEPLOY_PATH_TEST }}
 
       - name: 🧠 Run Laravel Commands (Test)
         uses: appleboy/ssh-action@v1.0.3
@@ -136,7 +143,7 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            cd /home/${{ secrets.SSH_USER }}/public_html/test
+            cd ${{ secrets.DEPLOY_PATH_TEST }}
             php artisan migrate --force
             php artisan optimize:clear
             php artisan config:cache
@@ -168,14 +175,14 @@ jobs:
           mkdir -p build
           cp .env.preprod build/.env
 
-      - name: 🚀 Upload to Preprod cPanel
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+      - name: 🚀 Upload via SSH (SCP)
+        uses: appleboy/scp-action@v0.1.7
         with:
-          server: ${{ secrets.CPANEL_HOST_PREPROD }}
-          username: ${{ secrets.CPANEL_USERNAME_PREPROD }}
-          password: ${{ secrets.CPANEL_PASSWORD_PREPROD }}
-          server-dir: ${{ secrets.CPANEL_PATH_PREPROD }}
-          local-dir: build/
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: "build/*"
+          target: ${{ secrets.DEPLOY_PATH_PREPROD }}
 
       - name: 🧠 Run Laravel Commands (Preprod)
         uses: appleboy/ssh-action@v1.0.3
@@ -184,7 +191,7 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            cd /home/${{ secrets.SSH_USER }}/public_html/preprod
+            cd ${{ secrets.DEPLOY_PATH_PREPROD }}
             php artisan migrate --force
             php artisan optimize:clear
             php artisan config:cache
@@ -216,14 +223,14 @@ jobs:
           mkdir -p build
           cp .env.prod build/.env
 
-      - name: 🚀 Upload to Production cPanel
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+      - name: 🚀 Upload via SSH (SCP)
+        uses: appleboy/scp-action@v0.1.7
         with:
-          server: ${{ secrets.CPANEL_HOST_PROD }}
-          username: ${{ secrets.CPANEL_USERNAME_PROD }}
-          password: ${{ secrets.CPANEL_PASSWORD_PROD }}
-          server-dir: ${{ secrets.CPANEL_PATH_PROD }}
-          local-dir: build/
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: "build/*"
+          target: ${{ secrets.DEPLOY_PATH_PROD }}
 
       - name: 🧠 Run Laravel Commands (Production)
         uses: appleboy/ssh-action@v1.0.3
@@ -232,7 +239,7 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            cd /home/${{ secrets.SSH_USER }}/public_html
+            cd ${{ secrets.DEPLOY_PATH_PROD }}
             php artisan migrate --force
             php artisan optimize:clear
             php artisan config:cache
