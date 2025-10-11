@@ -24,7 +24,10 @@ jobs:
           extensions: mbstring, bcmath, intl, mysql, gd, exif, pcntl
 
       - name: 📦 Install Composer Dependencies
-        run: composer install --no-dev --optimize-autoloader
+        run: |
+          mkdir -p bootstrap/cache
+          chmod -R 777 bootstrap/cache
+          composer install --no-dev --optimize-autoloader
 
       - name: 🧰 Build Frontend (Tailwind/NPM)
         run: |
