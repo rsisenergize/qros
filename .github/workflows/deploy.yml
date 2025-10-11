@@ -1,4 +1,4 @@
-name: 🚀 Qros Multi-Environment CI/CD (SSH-based & Stable)
+name: 🚀 Qros Multi-Environment CI/CD (Stable SSH Deployment)
 
 on:
   push:
@@ -36,26 +36,27 @@ jobs:
             npm run build || npm run prod || echo "No npm build step found"
           fi
 
-      - name: 📁 Prepare Safe Deployment Package
+      - name: 📁 Prepare Deployment Package
         run: |
           mkdir -p deploy
-          rsync -av \
-            --exclude='.git*' \
-            --exclude='node_modules' \
-            --exclude='tests' \
-            --exclude='.env*' \
-            --exclude='storage/app/public/*' \
-            --exclude='storage/logs/*' \
-            --exclude='storage/framework/*' \
-            --exclude='public/uploads/*' \
-            ./ deploy/
+          echo "📦 Copying Laravel app to deploy directory..."
+          tar --exclude='.git*' \
+              --exclude='node_modules' \
+              --exclude='tests' \
+              --exclude='.env*' \
+              --exclude='storage/app/public/*' \
+              --exclude='storage/logs/*' \
+              --exclude='storage/framework/*' \
+              --exclude='public/uploads/*' \
+              -cf - . | tar -xf - -C deploy
+          echo "✅ Copy complete."
 
       - name: 🧾 Debug deploy contents
         run: |
           echo "=== Deploy folder contents ==="
-          ls -la deploy || echo "deploy folder missing"
-          echo "=== Laravel root check ==="
-          if [ -f deploy/artisan ]; then echo "✅ Artisan found"; else echo "❌ Artisan missing"; fi
+          ls -la deploy | head -n 50
+          echo "=== Check artisan existence ==="
+          if [ -f deploy/artisan ]; then echo "✅ Artisan found"; else echo "❌ Artisan missing"; exit 1; fi
 
       - name: 📤 Upload Build Artifact
         uses: actions/upload-artifact@v4
@@ -152,7 +153,6 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             cd ${{ secrets.DEPLOY_PATH_TEST }}
-            if [ ! -f artisan ]; then echo "❌ Artisan not found in ${{ secrets.DEPLOY_PATH_TEST }}"; exit 1; fi
             php artisan migrate --force
             php artisan optimize:clear
             php artisan config:cache
@@ -201,7 +201,6 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             cd ${{ secrets.DEPLOY_PATH_PREPROD }}
-            if [ ! -f artisan ]; then echo "❌ Artisan not found in ${{ secrets.DEPLOY_PATH_PREPROD }}"; exit 1; fi
             php artisan migrate --force
             php artisan optimize:clear
             php artisan config:cache
@@ -250,7 +249,6 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             cd ${{ secrets.DEPLOY_PATH_PROD }}
-            if [ ! -f artisan ]; then echo "❌ Artisan not found in ${{ secrets.DEPLOY_PATH_PROD }}"; exit 1; fi
             php artisan migrate --force
             php artisan optimize:clear
             php artisan config:cache
