@@ -1,4 +1,4 @@
-name: 🚀 Qros Multi-Environment CI/CD (Auto Laravel Root Detection)
+name: 🚀 Qros CI/CD Deep Debug Pipeline
 
 on:
   push:
@@ -10,30 +10,32 @@ jobs:
   # 1️⃣ BUILD JOB
   # ===========================================================
   build:
-    name: 🧱 Build Qros
+    name: 🧱 Build Qros (Deep Debug)
     runs-on: ubuntu-latest
 
     steps:
       - name: 🧩 Checkout code
         uses: actions/checkout@v4
 
-      - name: ⚙️ Set up PHP
+      - name: ⚙️ Setup PHP
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'
           extensions: mbstring, bcmath, intl, mysql, gd, exif, pcntl
 
-      - name: 📦 Install Composer Dependencies (Auto-detect Laravel Root)
+      - name: 🔍 Locate Laravel root
+        id: detect-root
         run: |
-          # Find the Laravel root (folder containing artisan)
+          echo "🔎 Searching for artisan..."
           ARTISAN_PATH=$(find . -type f -name artisan | head -n 1 | xargs dirname)
-          echo "📂 Laravel root detected at: $ARTISAN_PATH"
-
           if [ -z "$ARTISAN_PATH" ]; then
-            echo "❌ Could not find artisan file. Please check your repository structure."
-            exit 1
+            echo "❌ Could not find artisan!"; exit 1
           fi
+          echo "✅ Found artisan at: $ARTISAN_PATH"
+          echo "ARTISAN_PATH=$ARTISAN_PATH" >> $GITHUB_ENV
 
+      - name: 📦 Install Composer Dependencies
+        run: |
           cd "$ARTISAN_PATH"
           mkdir -p bootstrap/cache
           chmod -R 777 bootstrap/cache
@@ -41,28 +43,19 @@ jobs:
 
       - name: 🧰 Build Frontend (if exists)
         run: |
-          ARTISAN_PATH=$(find . -type f -name artisan | head -n 1 | xargs dirname)
           cd "$ARTISAN_PATH"
           if [ -f package.json ]; then
             npm install
             npm run build || npm run prod || echo "⚠️ No npm build step found"
           else
-            echo "ℹ️ No frontend detected, skipping npm build."
+            echo "ℹ️ No frontend detected, skipping."
           fi
 
-      - name: 📁 Prepare Deployment Package
+      - name: 🛠 Run rsync with debug
         run: |
-          echo "📦 Detecting Laravel root for packaging..."
-          ARTISAN_PATH=$(find . -type f -name artisan | head -n 1 | xargs dirname)
-          echo "📂 Laravel root: $ARTISAN_PATH"
-
-          if [ -z "$ARTISAN_PATH" ]; then
-            echo "❌ Could not find artisan. Aborting build."
-            exit 1
-          fi
-
+          echo "📦 Copying Laravel from $ARTISAN_PATH to deploy/..."
           mkdir -p deploy
-          echo "🚚 Copying Laravel project to deploy folder..."
+          set -x
           rsync -av --progress "$ARTISAN_PATH/" ./deploy/ \
             --exclude='.git*' \
             --exclude='node_modules' \
@@ -72,27 +65,46 @@ jobs:
             --exclude='storage/logs/*' \
             --exclude='storage/framework/*' \
             --exclude='public/uploads/*'
+          RSYNC_EXIT=$?
+          set +x
+          echo "rsync exit code: $RSYNC_EXIT"
+          if [ $RSYNC_EXIT -ne 0 ]; then exit $RSYNC_EXIT; fi
 
-      - name: 🔍 Confirm deploy folder before upload
+      - name: 🔍 Debug: deploy folder verification
         run: |
-          echo "=== Deploy folder contents (after rsync) ==="
-          ls -la deploy | head -n 50
-          if [ -f deploy/artisan ]; then echo "✅ Artisan found in deploy"; else echo "❌ Artisan missing"; fi
+          echo "=== deploy/ top-level ==="
+          ls -la deploy || true
+          echo
+          echo "=== Count files ==="
+          find deploy -type f | wc -l || true
+          echo
+          echo "=== List first 200 files (relative) ==="
+          find deploy -type f -printf '%P\n' | head -n 200 || true
+          echo
+          echo "=== Verify key files exist ==="
+          for f in artisan composer.json composer.lock app bootstrap config routes public; do
+            if [ -e "deploy/$f" ]; then echo "FOUND: $f"; else echo "MISSING: $f"; fi
+          done
 
-      - name: 📤 Upload Build Artifact
+      - name: 🧾 Create tar of deploy folder for verification
+        run: |
+          tar -czf /tmp/deploy.tgz -C deploy .
+          echo "Tar size:"
+          ls -lh /tmp/deploy.tgz || true
+          echo "Tar contents (first 200):"
+          tar -tf /tmp/deploy.tgz | head -n 200
+
+      - name: 📤 Upload Artifact (qros_build)
         uses: actions/upload-artifact@v4
         with:
           name: qros_build
           path: deploy/
 
   # ===========================================================
-  # 🔄 DEPLOYMENT JOB TEMPLATE
+  # 2️⃣ DEPLOY JOB (DEV)
   # ===========================================================
-  # Same logic reused for Dev, Test, Preprod, and Prod.
-  # ===========================================================
-
   deploy-dev:
-    name: 🌱 Deploy to Dev
+    name: 🌱 Deploy to Dev (Debug)
     runs-on: ubuntu-latest
     needs: build
     environment: dev
@@ -106,20 +118,43 @@ jobs:
       - name: 🧩 Checkout code
         uses: actions/checkout@v4
 
-      - name: 🔍 Inspect build contents
+      - name: 🔍 Debug: after artifact download
         run: |
-          echo "=== Workspace after artifact download ==="
-          ls -la
-          echo "=== Build directory ==="
-          if [ -d build ]; then ls -la build | head -n 50; else echo "❌ build folder missing"; fi
+          echo "PWD: $(pwd)"
+          echo "Workspace listing:"
+          ls -la | head -n 50
+          echo
+          echo "=== build/ directory ==="
+          if [ -d build ]; then
+            ls -la build | head -n 50
+            echo "File count in build:"
+            find build -type f | wc -l
+            echo "Sample of files:"
+            find build -type f -printf '%P\n' | head -n 200
+            echo "Check key Laravel files:"
+            for f in artisan composer.json routes app public; do
+              if [ -e "build/$f" ]; then echo "FOUND: $f"; else echo "MISSING: $f"; fi
+            done
+          else
+            echo "❌ build/ folder missing after artifact download"
+          fi
+
+      - name: ✅ Guard: ensure build has files
+        run: |
+          if [ ! -d build ]; then echo "❌ build folder missing"; exit 1; fi
+          COUNT=$(find build -type f | wc -l)
+          echo "Total files in build: $COUNT"
+          if [ "$COUNT" -lt 5 ]; then
+            echo "❌ Not enough files (<5). Aborting upload."
+            exit 1
+          fi
 
       - name: 🔐 Copy Dev Environment File
         run: |
-          mkdir -p build
           if [ -f .env.dev ]; then
             cp .env.dev build/.env && echo "✅ Copied .env.dev"
           else
-            echo "⚠️ .env.dev not found in repo!"
+            echo "⚠️ .env.dev missing, skipping copy."
           fi
 
       - name: 🚀 Upload via SSH (SCP)
@@ -132,6 +167,24 @@ jobs:
           source: "build/."
           target: ${{ secrets.DEPLOY_PATH_DEV }}
 
+      - name: 🔍 Debug on remote server
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            cd ${{ secrets.DEPLOY_PATH_DEV }} || exit 1
+            echo "=== Remote deploy path: $(pwd) ==="
+            echo "Top-level:"
+            ls -la | head -n 50
+            echo "Count of files:"
+            find . -type f | wc -l
+            echo "Check artisan:"
+            if [ -f artisan ]; then echo "✅ artisan present"; else echo "❌ artisan missing"; fi
+            echo "List first 100 files:"
+            find . -type f -printf '%P\n' | head -n 100
+
       - name: 🧠 Run Laravel Commands (Dev)
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -140,162 +193,6 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             cd ${{ secrets.DEPLOY_PATH_DEV }} || exit 1
-            chmod -R 775 storage bootstrap/cache || true
-            php artisan storage:link || true
-            php artisan migrate --force || (php artisan migrate:rollback && exit 1)
-            php artisan optimize:clear
-            php artisan config:cache
-            php artisan route:cache
-            php artisan view:cache
-
-  deploy-test:
-    name: 🧪 Deploy to Test
-    runs-on: ubuntu-latest
-    needs: deploy-dev
-    environment:
-      name: test
-      url: https://test.qros.in
-
-    steps:
-      - uses: actions/download-artifact@v4
-        with:
-          name: qros_build
-          path: build/
-
-      - name: 🧩 Checkout code
-        uses: actions/checkout@v4
-
-      - name: 🔐 Copy Test Environment File
-        run: |
-          mkdir -p build
-          if [ -f .env.test ]; then
-            cp .env.test build/.env && echo "✅ Copied .env.test"
-          else
-            echo "⚠️ .env.test not found in repo!"
-          fi
-
-      - name: 🚀 Upload via SSH (SCP)
-        if: success() && (hashFiles('build/**') != '')
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: "build/."
-          target: ${{ secrets.DEPLOY_PATH_TEST }}
-
-      - name: 🧠 Run Laravel Commands (Test)
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          script: |
-            cd ${{ secrets.DEPLOY_PATH_TEST }} || exit 1
-            chmod -R 775 storage bootstrap/cache || true
-            php artisan storage:link || true
-            php artisan migrate --force || (php artisan migrate:rollback && exit 1)
-            php artisan optimize:clear
-            php artisan config:cache
-            php artisan route:cache
-            php artisan view:cache
-
-  deploy-preprod:
-    name: 🚀 Deploy to Preprod
-    runs-on: ubuntu-latest
-    needs: deploy-test
-    environment:
-      name: preprod
-      url: https://preprod.qros.in
-
-    steps:
-      - uses: actions/download-artifact@v4
-        with:
-          name: qros_build
-          path: build/
-
-      - name: 🧩 Checkout code
-        uses: actions/checkout@v4
-
-      - name: 🔐 Copy Preprod Environment File
-        run: |
-          mkdir -p build
-          if [ -f .env.preprod ]; then
-            cp .env.preprod build/.env && echo "✅ Copied .env.preprod"
-          else
-            echo "⚠️ .env.preprod not found in repo!"
-          fi
-
-      - name: 🚀 Upload via SSH (SCP)
-        if: success() && (hashFiles('build/**') != '')
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: "build/."
-          target: ${{ secrets.DEPLOY_PATH_PREPROD }}
-
-      - name: 🧠 Run Laravel Commands (Preprod)
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          script: |
-            cd ${{ secrets.DEPLOY_PATH_PREPROD }} || exit 1
-            chmod -R 775 storage bootstrap/cache || true
-            php artisan storage:link || true
-            php artisan migrate --force || (php artisan migrate:rollback && exit 1)
-            php artisan optimize:clear
-            php artisan config:cache
-            php artisan route:cache
-            php artisan view:cache
-
-  deploy-prod:
-    name: 🏁 Deploy to Production
-    runs-on: ubuntu-latest
-    needs: deploy-preprod
-    environment:
-      name: production
-      url: https://qros.in
-
-    steps:
-      - uses: actions/download-artifact@v4
-        with:
-          name: qros_build
-          path: build/
-
-      - name: 🧩 Checkout code
-        uses: actions/checkout@v4
-
-      - name: 🔐 Copy Production Environment File
-        run: |
-          mkdir -p build
-          if [ -f .env.prod ]; then
-            cp .env.prod build/.env && echo "✅ Copied .env.prod"
-          else
-            echo "⚠️ .env.prod not found in repo!"
-          fi
-
-      - name: 🚀 Upload via SSH (SCP)
-        if: success() && (hashFiles('build/**') != '')
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: "build/."
-          target: ${{ secrets.DEPLOY_PATH_PROD }}
-
-      - name: 🧠 Run Laravel Commands (Production)
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          script: |
-            cd ${{ secrets.DEPLOY_PATH_PROD }} || exit 1
             chmod -R 775 storage bootstrap/cache || true
             php artisan storage:link || true
             php artisan migrate --force || (php artisan migrate:rollback && exit 1)
