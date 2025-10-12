@@ -1,4 +1,4 @@
-name: 🚀 Qros Multi-Environment CI/CD (Debug Build Artifact Flow)
+name: 🚀 Qros Multi-Environment CI/CD (Auto Laravel Root Detection)
 
 on:
   push:
@@ -23,28 +23,47 @@ jobs:
           php-version: '8.2'
           extensions: mbstring, bcmath, intl, mysql, gd, exif, pcntl
 
-      - name: 📦 Install Composer Dependencies
+      - name: 📦 Install Composer Dependencies (Auto-detect Laravel Root)
         run: |
+          # Find the Laravel root (folder containing artisan)
+          ARTISAN_PATH=$(find . -type f -name artisan | head -n 1 | xargs dirname)
+          echo "📂 Laravel root detected at: $ARTISAN_PATH"
+
+          if [ -z "$ARTISAN_PATH" ]; then
+            echo "❌ Could not find artisan file. Please check your repository structure."
+            exit 1
+          fi
+
+          cd "$ARTISAN_PATH"
           mkdir -p bootstrap/cache
           chmod -R 777 bootstrap/cache
           composer install --no-dev --optimize-autoloader
 
-      - name: 🧰 Build Frontend (Tailwind/NPM)
+      - name: 🧰 Build Frontend (if exists)
         run: |
+          ARTISAN_PATH=$(find . -type f -name artisan | head -n 1 | xargs dirname)
+          cd "$ARTISAN_PATH"
           if [ -f package.json ]; then
             npm install
             npm run build || npm run prod || echo "⚠️ No npm build step found"
+          else
+            echo "ℹ️ No frontend detected, skipping npm build."
           fi
-
-      - name: 🔒 Ensure proper permissions
-        run: |
-          chmod -R 775 storage bootstrap/cache
 
       - name: 📁 Prepare Deployment Package
         run: |
-          echo "📦 Copying Laravel app to deploy directory..."
+          echo "📦 Detecting Laravel root for packaging..."
+          ARTISAN_PATH=$(find . -type f -name artisan | head -n 1 | xargs dirname)
+          echo "📂 Laravel root: $ARTISAN_PATH"
+
+          if [ -z "$ARTISAN_PATH" ]; then
+            echo "❌ Could not find artisan. Aborting build."
+            exit 1
+          fi
+
           mkdir -p deploy
-          rsync -av --progress ./ ./deploy/ \
+          echo "🚚 Copying Laravel project to deploy folder..."
+          rsync -av --progress "$ARTISAN_PATH/" ./deploy/ \
             --exclude='.git*' \
             --exclude='node_modules' \
             --exclude='tests' \
@@ -53,7 +72,6 @@ jobs:
             --exclude='storage/logs/*' \
             --exclude='storage/framework/*' \
             --exclude='public/uploads/*'
-          echo "✅ Copy complete."
 
       - name: 🔍 Confirm deploy folder before upload
         run: |
@@ -68,8 +86,11 @@ jobs:
           path: deploy/
 
   # ===========================================================
-  # 2️⃣ DEV DEPLOYMENT (Auto)
+  # 🔄 DEPLOYMENT JOB TEMPLATE
   # ===========================================================
+  # Same logic reused for Dev, Test, Preprod, and Prod.
+  # ===========================================================
+
   deploy-dev:
     name: 🌱 Deploy to Dev
     runs-on: ubuntu-latest
@@ -85,12 +106,12 @@ jobs:
       - name: 🧩 Checkout code
         uses: actions/checkout@v4
 
-      - name: 🔍 List workspace after artifact download
+      - name: 🔍 Inspect build contents
         run: |
-          echo "=== Files after artifact download ==="
+          echo "=== Workspace after artifact download ==="
           ls -la
-          echo "=== Contents of build directory (if exists) ==="
-          if [ -d build ]; then ls -la build | head -n 50; else echo "❌ build/ folder not found"; fi
+          echo "=== Build directory ==="
+          if [ -d build ]; then ls -la build | head -n 50; else echo "❌ build folder missing"; fi
 
       - name: 🔐 Copy Dev Environment File
         run: |
@@ -127,9 +148,6 @@ jobs:
             php artisan route:cache
             php artisan view:cache
 
-  # ===========================================================
-  # 3️⃣ TEST DEPLOYMENT (Manual Approval)
-  # ===========================================================
   deploy-test:
     name: 🧪 Deploy to Test
     runs-on: ubuntu-latest
@@ -146,13 +164,6 @@ jobs:
 
       - name: 🧩 Checkout code
         uses: actions/checkout@v4
-
-      - name: 🔍 List workspace after artifact download
-        run: |
-          echo "=== Files after artifact download ==="
-          ls -la
-          echo "=== Contents of build directory (if exists) ==="
-          if [ -d build ]; then ls -la build | head -n 50; else echo "❌ build/ folder not found"; fi
 
       - name: 🔐 Copy Test Environment File
         run: |
@@ -189,9 +200,6 @@ jobs:
             php artisan route:cache
             php artisan view:cache
 
-  # ===========================================================
-  # 4️⃣ PREPROD DEPLOYMENT (Manual Approval)
-  # ===========================================================
   deploy-preprod:
     name: 🚀 Deploy to Preprod
     runs-on: ubuntu-latest
@@ -208,13 +216,6 @@ jobs:
 
       - name: 🧩 Checkout code
         uses: actions/checkout@v4
-
-      - name: 🔍 List workspace after artifact download
-        run: |
-          echo "=== Files after artifact download ==="
-          ls -la
-          echo "=== Contents of build directory (if exists) ==="
-          if [ -d build ]; then ls -la build | head -n 50; else echo "❌ build/ folder not found"; fi
 
       - name: 🔐 Copy Preprod Environment File
         run: |
@@ -251,9 +252,6 @@ jobs:
             php artisan route:cache
             php artisan view:cache
 
-  # ===========================================================
-  # 5️⃣ PRODUCTION DEPLOYMENT (Manual Final Approval)
-  # ===========================================================
   deploy-prod:
     name: 🏁 Deploy to Production
     runs-on: ubuntu-latest
@@ -270,13 +268,6 @@ jobs:
 
       - name: 🧩 Checkout code
         uses: actions/checkout@v4
-
-      - name: 🔍 List workspace after artifact download
-        run: |
-          echo "=== Files after artifact download ==="
-          ls -la
-          echo "=== Contents of build directory (if exists) ==="
-          if [ -d build ]; then ls -la build | head -n 50; else echo "❌ build/ folder not found"; fi
 
       - name: 🔐 Copy Production Environment File
         run: |
