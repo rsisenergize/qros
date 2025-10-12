@@ -1,4 +1,4 @@
-name: 🚀 Qros Multi-Environment CI/CD (Stable SSH Deployment)
+name: 🚀 Qros Multi-Environment CI/CD (Debug Build Artifact Flow)
 
 on:
   push:
@@ -53,9 +53,13 @@ jobs:
             --exclude='storage/logs/*' \
             --exclude='storage/framework/*' \
             --exclude='public/uploads/*'
-          echo "✅ Copy complete. Contents of deploy/:"
+          echo "✅ Copy complete."
+
+      - name: 🔍 Confirm deploy folder before upload
+        run: |
+          echo "=== Deploy folder contents (after rsync) ==="
           ls -la deploy | head -n 50
-          if [ -f deploy/artisan ]; then echo "✅ Artisan found in deploy"; else echo "❌ Artisan missing"; exit 1; fi
+          if [ -f deploy/artisan ]; then echo "✅ Artisan found in deploy"; else echo "❌ Artisan missing"; fi
 
       - name: 📤 Upload Build Artifact
         uses: actions/upload-artifact@v4
@@ -78,22 +82,27 @@ jobs:
           name: qros_build
           path: build/
 
-      # ✅ Fix: Checkout repo so .env.dev is available
       - name: 🧩 Checkout code
         uses: actions/checkout@v4
 
-      - name: 🔎 Debug build folder before SCP
+      - name: 🔍 List workspace after artifact download
         run: |
-          echo "=== Build folder contents ==="
-          ls -la build | head -n 50
-          if [ -f build/artisan ]; then echo "✅ Artisan found in build"; else echo "❌ Artisan missing"; exit 1; fi
+          echo "=== Files after artifact download ==="
+          ls -la
+          echo "=== Contents of build directory (if exists) ==="
+          if [ -d build ]; then ls -la build | head -n 50; else echo "❌ build/ folder not found"; fi
 
       - name: 🔐 Copy Dev Environment File
         run: |
           mkdir -p build
-          cp .env.dev build/.env
+          if [ -f .env.dev ]; then
+            cp .env.dev build/.env && echo "✅ Copied .env.dev"
+          else
+            echo "⚠️ .env.dev not found in repo!"
+          fi
 
       - name: 🚀 Upload via SSH (SCP)
+        if: success() && (hashFiles('build/**') != '')
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.SSH_HOST }}
@@ -109,8 +118,8 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            cd ${{ secrets.DEPLOY_PATH_DEV }}
-            chmod -R 775 storage bootstrap/cache
+            cd ${{ secrets.DEPLOY_PATH_DEV }} || exit 1
+            chmod -R 775 storage bootstrap/cache || true
             php artisan storage:link || true
             php artisan migrate --force || (php artisan migrate:rollback && exit 1)
             php artisan optimize:clear
@@ -138,18 +147,24 @@ jobs:
       - name: 🧩 Checkout code
         uses: actions/checkout@v4
 
-      - name: 🔎 Debug build folder before SCP
+      - name: 🔍 List workspace after artifact download
         run: |
-          echo "=== Build folder contents ==="
-          ls -la build | head -n 50
-          if [ -f build/artisan ]; then echo "✅ Artisan found in build"; else echo "❌ Artisan missing"; exit 1; fi
+          echo "=== Files after artifact download ==="
+          ls -la
+          echo "=== Contents of build directory (if exists) ==="
+          if [ -d build ]; then ls -la build | head -n 50; else echo "❌ build/ folder not found"; fi
 
       - name: 🔐 Copy Test Environment File
         run: |
           mkdir -p build
-          cp .env.test build/.env
+          if [ -f .env.test ]; then
+            cp .env.test build/.env && echo "✅ Copied .env.test"
+          else
+            echo "⚠️ .env.test not found in repo!"
+          fi
 
       - name: 🚀 Upload via SSH (SCP)
+        if: success() && (hashFiles('build/**') != '')
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.SSH_HOST }}
@@ -165,8 +180,8 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            cd ${{ secrets.DEPLOY_PATH_TEST }}
-            chmod -R 775 storage bootstrap/cache
+            cd ${{ secrets.DEPLOY_PATH_TEST }} || exit 1
+            chmod -R 775 storage bootstrap/cache || true
             php artisan storage:link || true
             php artisan migrate --force || (php artisan migrate:rollback && exit 1)
             php artisan optimize:clear
@@ -194,18 +209,24 @@ jobs:
       - name: 🧩 Checkout code
         uses: actions/checkout@v4
 
-      - name: 🔎 Debug build folder before SCP
+      - name: 🔍 List workspace after artifact download
         run: |
-          echo "=== Build folder contents ==="
-          ls -la build | head -n 50
-          if [ -f build/artisan ]; then echo "✅ Artisan found in build"; else echo "❌ Artisan missing"; exit 1; fi
+          echo "=== Files after artifact download ==="
+          ls -la
+          echo "=== Contents of build directory (if exists) ==="
+          if [ -d build ]; then ls -la build | head -n 50; else echo "❌ build/ folder not found"; fi
 
       - name: 🔐 Copy Preprod Environment File
         run: |
           mkdir -p build
-          cp .env.preprod build/.env
+          if [ -f .env.preprod ]; then
+            cp .env.preprod build/.env && echo "✅ Copied .env.preprod"
+          else
+            echo "⚠️ .env.preprod not found in repo!"
+          fi
 
       - name: 🚀 Upload via SSH (SCP)
+        if: success() && (hashFiles('build/**') != '')
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.SSH_HOST }}
@@ -221,8 +242,8 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            cd ${{ secrets.DEPLOY_PATH_PREPROD }}
-            chmod -R 775 storage bootstrap/cache
+            cd ${{ secrets.DEPLOY_PATH_PREPROD }} || exit 1
+            chmod -R 775 storage bootstrap/cache || true
             php artisan storage:link || true
             php artisan migrate --force || (php artisan migrate:rollback && exit 1)
             php artisan optimize:clear
@@ -250,18 +271,24 @@ jobs:
       - name: 🧩 Checkout code
         uses: actions/checkout@v4
 
-      - name: 🔎 Debug build folder before SCP
+      - name: 🔍 List workspace after artifact download
         run: |
-          echo "=== Build folder contents ==="
-          ls -la build | head -n 50
-          if [ -f build/artisan ]; then echo "✅ Artisan found in build"; else echo "❌ Artisan missing"; exit 1; fi
+          echo "=== Files after artifact download ==="
+          ls -la
+          echo "=== Contents of build directory (if exists) ==="
+          if [ -d build ]; then ls -la build | head -n 50; else echo "❌ build/ folder not found"; fi
 
       - name: 🔐 Copy Production Environment File
         run: |
           mkdir -p build
-          cp .env.prod build/.env
+          if [ -f .env.prod ]; then
+            cp .env.prod build/.env && echo "✅ Copied .env.prod"
+          else
+            echo "⚠️ .env.prod not found in repo!"
+          fi
 
       - name: 🚀 Upload via SSH (SCP)
+        if: success() && (hashFiles('build/**') != '')
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.SSH_HOST }}
@@ -277,8 +304,8 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            cd ${{ secrets.DEPLOY_PATH_PROD }}
-            chmod -R 775 storage bootstrap/cache
+            cd ${{ secrets.DEPLOY_PATH_PROD }} || exit 1
+            chmod -R 775 storage bootstrap/cache || true
             php artisan storage:link || true
             php artisan migrate --force || (php artisan migrate:rollback && exit 1)
             php artisan optimize:clear
