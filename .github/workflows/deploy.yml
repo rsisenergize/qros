@@ -65,9 +65,8 @@ jobs:
           path: deploy/
 
   # ===========================================================
-  # 2️⃣ DEPLOY TEMPLATE FUNCTION (DEV/TEST/PREPROD/PROD)
+  # 2️⃣ DEPLOY TO DEV
   # ===========================================================
-
   deploy-dev:
     name: 🌱 Deploy to Dev
     runs-on: ubuntu-latest
@@ -75,23 +74,25 @@ jobs:
     environment: dev
 
     steps:
-      - uses: actions/download-artifact@v4
+      - name: 🧩 Download Build Artifact
+        uses: actions/download-artifact@v4
         with:
           name: qros_build
           path: build/
+          merge-multiple: true
+
+      - name: ✅ Verify Artifact Download
+        run: |
+          echo "=== Contents after download ==="
+          ls -la build | head -n 50
+          COUNT=$(find build -type f | wc -l)
+          echo "Total files: $COUNT"
+          if [ -f build/artisan ]; then echo "✅ Artisan found"; else echo "❌ Artisan missing"; exit 1; fi
 
       - uses: actions/checkout@v4
 
-      - name: ✅ Verify build before upload
-        run: |
-          COUNT=$(find build -type f | wc -l)
-          echo "📦 Files in build: $COUNT"
-          if [ "$COUNT" -lt 5 ]; then echo "❌ Build folder too small!"; exit 1; fi
-          if [ -f build/artisan ]; then echo "✅ Artisan found"; else echo "❌ Artisan missing"; exit 1; fi
-
       - name: 🔐 Copy Dev Environment File
-        run: |
-          cp .env.dev build/.env
+        run: cp .env.dev build/.env
 
       - name: 🚀 Upload to Dev via SSH
         uses: appleboy/scp-action@v0.1.7
@@ -118,6 +119,9 @@ jobs:
             php artisan route:cache
             php artisan view:cache
 
+  # ===========================================================
+  # 3️⃣ DEPLOY TO TEST
+  # ===========================================================
   deploy-test:
     name: 🧪 Deploy to Test
     runs-on: ubuntu-latest
@@ -127,16 +131,25 @@ jobs:
       url: https://test.qros.in
 
     steps:
-      - uses: actions/download-artifact@v4
+      - name: 🧩 Download Build Artifact
+        uses: actions/download-artifact@v4
         with:
           name: qros_build
           path: build/
+          merge-multiple: true
+
+      - name: ✅ Verify Artifact Download
+        run: |
+          echo "=== Contents after download ==="
+          ls -la build | head -n 50
+          COUNT=$(find build -type f | wc -l)
+          echo "Total files: $COUNT"
+          if [ -f build/artisan ]; then echo "✅ Artisan found"; else echo "❌ Artisan missing"; exit 1; fi
 
       - uses: actions/checkout@v4
 
       - name: 🔐 Copy Test Environment File
-        run: |
-          cp .env.test build/.env
+        run: cp .env.test build/.env
 
       - name: 🚀 Upload to Test via SSH
         uses: appleboy/scp-action@v0.1.7
@@ -162,6 +175,9 @@ jobs:
             php artisan route:cache
             php artisan view:cache
 
+  # ===========================================================
+  # 4️⃣ DEPLOY TO PREPROD
+  # ===========================================================
   deploy-preprod:
     name: 🚀 Deploy to Preprod
     runs-on: ubuntu-latest
@@ -171,16 +187,23 @@ jobs:
       url: https://preprod.qros.in
 
     steps:
-      - uses: actions/download-artifact@v4
+      - name: 🧩 Download Build Artifact
+        uses: actions/download-artifact@v4
         with:
           name: qros_build
           path: build/
+          merge-multiple: true
+
+      - name: ✅ Verify Artifact Download
+        run: |
+          COUNT=$(find build -type f | wc -l)
+          echo "Total files: $COUNT"
+          if [ -f build/artisan ]; then echo "✅ Artisan found"; else echo "❌ Artisan missing"; exit 1; fi
 
       - uses: actions/checkout@v4
 
       - name: 🔐 Copy Preprod Environment File
-        run: |
-          cp .env.preprod build/.env
+        run: cp .env.preprod build/.env
 
       - name: 🚀 Upload to Preprod via SSH
         uses: appleboy/scp-action@v0.1.7
@@ -206,6 +229,9 @@ jobs:
             php artisan route:cache
             php artisan view:cache
 
+  # ===========================================================
+  # 5️⃣ DEPLOY TO PRODUCTION
+  # ===========================================================
   deploy-prod:
     name: 🏁 Deploy to Production
     runs-on: ubuntu-latest
@@ -215,16 +241,23 @@ jobs:
       url: https://qros.in
 
     steps:
-      - uses: actions/download-artifact@v4
+      - name: 🧩 Download Build Artifact
+        uses: actions/download-artifact@v4
         with:
           name: qros_build
           path: build/
+          merge-multiple: true
+
+      - name: ✅ Verify Artifact Download
+        run: |
+          COUNT=$(find build -type f | wc -l)
+          echo "Total files: $COUNT"
+          if [ -f build/artisan ]; then echo "✅ Artisan found"; else echo "❌ Artisan missing"; exit 1; fi
 
       - uses: actions/checkout@v4
 
       - name: 🔐 Copy Production Environment File
-        run: |
-          cp .env.prod build/.env
+        run: cp .env.prod build/.env
 
       - name: 🚀 Upload to Production via SSH
         uses: appleboy/scp-action@v0.1.7
