@@ -134,14 +134,20 @@ jobs:
           ls -la build | head -n 20
 
       # 🚀 Upload via SSH (SCP)
-      - name: 🚀 Upload to Dev via SSH
+      - name: 🚀 Upload to Dev via SSH (Direct Copy Mode)
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: "build/."
+          source: "build/*"
           target: "${{ secrets.DEPLOY_PATH_DEV }}/"
+          strip_components: 0
+          tar_dereference: false
+          rm: false
+          overwrite: true
+          debug: true
+
 
       # 🧾 Verify remote files after SCP
       - name: 🧾 Verify Remote Files After Upload
