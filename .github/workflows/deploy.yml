@@ -33,8 +33,12 @@ jobs:
         run: |
           if [ -f package.json ]; then
             npm install
-            npm run build || npm run prod || echo "No npm build step found"
+            npm run build || npm run prod || echo "⚠️ No npm build step found"
           fi
+
+      - name: 🔒 Ensure proper permissions
+        run: |
+          chmod -R 775 storage bootstrap/cache
 
       - name: 📁 Prepare Deployment Package
         run: |
@@ -104,8 +108,10 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             cd ${{ secrets.DEPLOY_PATH_DEV }}
-            if [ ! -f artisan ]; then echo "❌ Artisan not found in ${{ secrets.DEPLOY_PATH_DEV }}"; exit 1; fi
-            php artisan migrate --force
+            if [ ! -f artisan ]; then echo "❌ Artisan not found"; exit 1; fi
+            chmod -R 775 storage bootstrap/cache
+            php artisan storage:link || true
+            php artisan migrate --force || (php artisan migrate:rollback && exit 1)
             php artisan optimize:clear
             php artisan config:cache
             php artisan route:cache
@@ -153,7 +159,9 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             cd ${{ secrets.DEPLOY_PATH_TEST }}
-            php artisan migrate --force
+            chmod -R 775 storage bootstrap/cache
+            php artisan storage:link || true
+            php artisan migrate --force || (php artisan migrate:rollback && exit 1)
             php artisan optimize:clear
             php artisan config:cache
             php artisan route:cache
@@ -201,7 +209,9 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             cd ${{ secrets.DEPLOY_PATH_PREPROD }}
-            php artisan migrate --force
+            chmod -R 775 storage bootstrap/cache
+            php artisan storage:link || true
+            php artisan migrate --force || (php artisan migrate:rollback && exit 1)
             php artisan optimize:clear
             php artisan config:cache
             php artisan route:cache
@@ -249,7 +259,9 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             cd ${{ secrets.DEPLOY_PATH_PROD }}
-            php artisan migrate --force
+            chmod -R 775 storage bootstrap/cache
+            php artisan storage:link || true
+            php artisan migrate --force || (php artisan migrate:rollback && exit 1)
             php artisan optimize:clear
             php artisan config:cache
             php artisan route:cache
