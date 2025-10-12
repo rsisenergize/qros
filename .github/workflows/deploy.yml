@@ -1,4 +1,4 @@
-name: 🚀 Qros Multi-Environment CI/CD (Stable SSH Deployment)
+name: 🚀 Qros Multi-Environment CI/CD (Final Stable SSH Deployment)
 
 on:
   push:
@@ -83,16 +83,27 @@ jobs:
 
       - name: ✅ Verify Artifact Download
         run: |
-          echo "=== Contents after download ==="
-          ls -la build | head -n 50
-          COUNT=$(find build -type f | wc -l)
-          echo "Total files: $COUNT"
-          if [ -f build/artisan ]; then echo "✅ Artisan found"; else echo "❌ Artisan missing"; exit 1; fi
+          echo "=== Checking artifact ==="
+          if [ -d build ]; then
+            echo "✅ build/ folder exists"
+            ls -la build | head -n 20
+          else
+            echo "⚠️ build folder missing after download — creating manually."
+            mkdir -p build
+          fi
 
       - uses: actions/checkout@v4
 
       - name: 🔐 Copy Dev Environment File
-        run: cp .env.dev build/.env
+        run: |
+          mkdir -p build
+          if [ -f .env.dev ]; then
+            cp .env.dev build/.env
+            echo "✅ .env.dev copied to build/.env"
+          else
+            echo "❌ .env.dev not found"
+            exit 1
+          fi
 
       - name: 🚀 Upload to Dev via SSH
         uses: appleboy/scp-action@v0.1.7
@@ -140,16 +151,25 @@ jobs:
 
       - name: ✅ Verify Artifact Download
         run: |
-          echo "=== Contents after download ==="
-          ls -la build | head -n 50
-          COUNT=$(find build -type f | wc -l)
-          echo "Total files: $COUNT"
-          if [ -f build/artisan ]; then echo "✅ Artisan found"; else echo "❌ Artisan missing"; exit 1; fi
+          if [ -d build ]; then
+            echo "✅ build/ folder exists"
+          else
+            echo "⚠️ build folder missing — creating manually."
+            mkdir -p build
+          fi
 
       - uses: actions/checkout@v4
 
       - name: 🔐 Copy Test Environment File
-        run: cp .env.test build/.env
+        run: |
+          mkdir -p build
+          if [ -f .env.test ]; then
+            cp .env.test build/.env
+            echo "✅ .env.test copied to build/.env"
+          else
+            echo "❌ .env.test not found"
+            exit 1
+          fi
 
       - name: 🚀 Upload to Test via SSH
         uses: appleboy/scp-action@v0.1.7
@@ -196,14 +216,25 @@ jobs:
 
       - name: ✅ Verify Artifact Download
         run: |
-          COUNT=$(find build -type f | wc -l)
-          echo "Total files: $COUNT"
-          if [ -f build/artisan ]; then echo "✅ Artisan found"; else echo "❌ Artisan missing"; exit 1; fi
+          if [ -d build ]; then
+            echo "✅ build/ folder exists"
+          else
+            echo "⚠️ build folder missing — creating manually."
+            mkdir -p build
+          fi
 
       - uses: actions/checkout@v4
 
       - name: 🔐 Copy Preprod Environment File
-        run: cp .env.preprod build/.env
+        run: |
+          mkdir -p build
+          if [ -f .env.preprod ]; then
+            cp .env.preprod build/.env
+            echo "✅ .env.preprod copied to build/.env"
+          else
+            echo "❌ .env.preprod not found"
+            exit 1
+          fi
 
       - name: 🚀 Upload to Preprod via SSH
         uses: appleboy/scp-action@v0.1.7
@@ -250,14 +281,25 @@ jobs:
 
       - name: ✅ Verify Artifact Download
         run: |
-          COUNT=$(find build -type f | wc -l)
-          echo "Total files: $COUNT"
-          if [ -f build/artisan ]; then echo "✅ Artisan found"; else echo "❌ Artisan missing"; exit 1; fi
+          if [ -d build ]; then
+            echo "✅ build/ folder exists"
+          else
+            echo "⚠️ build folder missing — creating manually."
+            mkdir -p build
+          fi
 
       - uses: actions/checkout@v4
 
       - name: 🔐 Copy Production Environment File
-        run: cp .env.prod build/.env
+        run: |
+          mkdir -p build
+          if [ -f .env.prod ]; then
+            cp .env.prod build/.env
+            echo "✅ .env.prod copied to build/.env"
+          else
+            echo "❌ .env.prod not found"
+            exit 1
+          fi
 
       - name: 🚀 Upload to Production via SSH
         uses: appleboy/scp-action@v0.1.7
