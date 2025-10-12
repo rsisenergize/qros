@@ -84,10 +84,15 @@ jobs:
           ls -la build | head -n 50
           if [ -f build/artisan ]; then echo "✅ Artisan found in build"; else echo "❌ Artisan missing"; exit 1; fi
 
+      - name: 🧭 Debug current directory
+        run: |
+          pwd
+          ls -la
+
       - name: 🔐 Copy Dev Environment File
         run: |
           mkdir -p build
-          cp .env.dev build/.env
+          cp ../.env.dev build/.env || cp .env.dev build/.env
 
       - name: 🚀 Upload via SSH (SCP)
         uses: appleboy/scp-action@v0.1.7
@@ -137,10 +142,15 @@ jobs:
           ls -la build | head -n 50
           if [ -f build/artisan ]; then echo "✅ Artisan found in build"; else echo "❌ Artisan missing"; exit 1; fi
 
+      - name: 🧭 Debug current directory
+        run: |
+          pwd
+          ls -la
+
       - name: 🔐 Copy Test Environment File
         run: |
           mkdir -p build
-          cp .env.test build/.env
+          cp ../.env.test build/.env || cp .env.test build/.env
 
       - name: 🚀 Upload via SSH (SCP)
         uses: appleboy/scp-action@v0.1.7
@@ -190,10 +200,15 @@ jobs:
           ls -la build | head -n 50
           if [ -f build/artisan ]; then echo "✅ Artisan found in build"; else echo "❌ Artisan missing"; exit 1; fi
 
+      - name: 🧭 Debug current directory
+        run: |
+          pwd
+          ls -la
+
       - name: 🔐 Copy Preprod Environment File
         run: |
           mkdir -p build
-          cp .env.preprod build/.env
+          cp ../.env.preprod build/.env || cp .env.preprod build/.env
 
       - name: 🚀 Upload via SSH (SCP)
         uses: appleboy/scp-action@v0.1.7
@@ -243,10 +258,15 @@ jobs:
           ls -la build | head -n 50
           if [ -f build/artisan ]; then echo "✅ Artisan found in build"; else echo "❌ Artisan missing"; exit 1; fi
 
+      - name: 🧭 Debug current directory
+        run: |
+          pwd
+          ls -la
+
       - name: 🔐 Copy Production Environment File
         run: |
           mkdir -p build
-          cp .env.prod build/.env
+          cp ../.env.prod build/.env || cp .env.prod build/.env
 
       - name: 🚀 Upload via SSH (SCP)
         uses: appleboy/scp-action@v0.1.7
