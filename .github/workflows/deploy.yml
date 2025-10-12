@@ -42,25 +42,20 @@ jobs:
 
       - name: 📁 Prepare Deployment Package
         run: |
-          mkdir -p deploy
           echo "📦 Copying Laravel app to deploy directory..."
-          tar --exclude='.git*' \
-              --exclude='node_modules' \
-              --exclude='tests' \
-              --exclude='.env*' \
-              --exclude='storage/app/public/*' \
-              --exclude='storage/logs/*' \
-              --exclude='storage/framework/*' \
-              --exclude='public/uploads/*' \
-              -cf - . | tar -xf - -C deploy
-          echo "✅ Copy complete."
-
-      - name: 🧾 Debug deploy contents
-        run: |
-          echo "=== Deploy folder contents ==="
+          mkdir -p deploy
+          rsync -av --progress ./ ./deploy/ \
+            --exclude='.git*' \
+            --exclude='node_modules' \
+            --exclude='tests' \
+            --exclude='.env*' \
+            --exclude='storage/app/public/*' \
+            --exclude='storage/logs/*' \
+            --exclude='storage/framework/*' \
+            --exclude='public/uploads/*'
+          echo "✅ Copy complete. Contents of deploy/:"
           ls -la deploy | head -n 50
-          echo "=== Check artisan existence ==="
-          if [ -f deploy/artisan ]; then echo "✅ Artisan found"; else echo "❌ Artisan missing"; exit 1; fi
+          if [ -f deploy/artisan ]; then echo "✅ Artisan found in deploy"; else echo "❌ Artisan missing"; exit 1; fi
 
       - name: 📤 Upload Build Artifact
         uses: actions/upload-artifact@v4
@@ -83,8 +78,11 @@ jobs:
           name: qros_build
           path: build/
 
-      - name: 🧩 Checkout code
-        uses: actions/checkout@v4
+      - name: 🔎 Debug build folder before SCP
+        run: |
+          echo "=== Build folder contents ==="
+          ls -la build | head -n 50
+          if [ -f build/artisan ]; then echo "✅ Artisan found in build"; else echo "❌ Artisan missing"; exit 1; fi
 
       - name: 🔐 Copy Dev Environment File
         run: |
@@ -108,7 +106,6 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             cd ${{ secrets.DEPLOY_PATH_DEV }}
-            if [ ! -f artisan ]; then echo "❌ Artisan not found"; exit 1; fi
             chmod -R 775 storage bootstrap/cache
             php artisan storage:link || true
             php artisan migrate --force || (php artisan migrate:rollback && exit 1)
@@ -134,8 +131,11 @@ jobs:
           name: qros_build
           path: build/
 
-      - name: 🧩 Checkout code
-        uses: actions/checkout@v4
+      - name: 🔎 Debug build folder before SCP
+        run: |
+          echo "=== Build folder contents ==="
+          ls -la build | head -n 50
+          if [ -f build/artisan ]; then echo "✅ Artisan found in build"; else echo "❌ Artisan missing"; exit 1; fi
 
       - name: 🔐 Copy Test Environment File
         run: |
@@ -184,8 +184,11 @@ jobs:
           name: qros_build
           path: build/
 
-      - name: 🧩 Checkout code
-        uses: actions/checkout@v4
+      - name: 🔎 Debug build folder before SCP
+        run: |
+          echo "=== Build folder contents ==="
+          ls -la build | head -n 50
+          if [ -f build/artisan ]; then echo "✅ Artisan found in build"; else echo "❌ Artisan missing"; exit 1; fi
 
       - name: 🔐 Copy Preprod Environment File
         run: |
@@ -234,8 +237,11 @@ jobs:
           name: qros_build
           path: build/
 
-      - name: 🧩 Checkout code
-        uses: actions/checkout@v4
+      - name: 🔎 Debug build folder before SCP
+        run: |
+          echo "=== Build folder contents ==="
+          ls -la build | head -n 50
+          if [ -f build/artisan ]; then echo "✅ Artisan found in build"; else echo "❌ Artisan missing"; exit 1; fi
 
       - name: 🔐 Copy Production Environment File
         run: |
