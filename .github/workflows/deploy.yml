@@ -1,4 +1,4 @@
-name: 🚀 Qros Multi-Environment CI/CD (Stable SSH Deployment)
+name: 🚀 Qros Multi-Environment CI/CD (SCP Deployment for cPanel)
 
 on:
   push:
@@ -12,12 +12,10 @@ jobs:
   build:
     name: 🧱 Build Qros
     runs-on: ubuntu-latest
-
     steps:
-      - name: 🧩 Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: ⚙️ Set up PHP
+      - name: ⚙️ Setup PHP
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'
@@ -29,33 +27,34 @@ jobs:
           chmod -R 777 bootstrap/cache
           composer install --no-dev --optimize-autoloader
 
-      - name: 🧰 Build Frontend (Tailwind/NPM)
+      - name: 🧰 Build Frontend (if exists)
         run: |
           if [ -f package.json ]; then
             npm install
-            npm run build || npm run prod || echo "No npm build step found"
+            npm run build || npm run prod || echo "⚠️ No npm build step found"
+          else
+            echo "ℹ️ No frontend detected, skipping."
           fi
 
       - name: 📁 Prepare Deployment Package
         run: |
-          mkdir -p deploy
           echo "📦 Copying Laravel app to deploy directory..."
-          tar --exclude='.git*' \
-              --exclude='node_modules' \
-              --exclude='tests' \
-              --exclude='.env*' \
-              --exclude='storage/app/public/*' \
-              --exclude='storage/logs/*' \
-              --exclude='storage/framework/*' \
-              --exclude='public/uploads/*' \
-              -cf - . | tar -xf - -C deploy
+          mkdir -p deploy
+          rsync -av --progress ./ ./deploy/ \
+            --exclude='.git*' \
+            --exclude='node_modules' \
+            --exclude='tests' \
+            --exclude='.env*' \
+            --exclude='storage/app/public/*' \
+            --exclude='storage/logs/*' \
+            --exclude='storage/framework/*' \
+            --exclude='public/uploads/*'
           echo "✅ Copy complete."
 
-      - name: 🧾 Debug deploy contents
+      - name: ✅ Verify deploy folder before upload
         run: |
-          echo "=== Deploy folder contents ==="
-          ls -la deploy | head -n 50
-          echo "=== Check artisan existence ==="
+          FILE_COUNT=$(find deploy -type f | wc -l)
+          echo "📁 Files in deploy: $FILE_COUNT"
           if [ -f deploy/artisan ]; then echo "✅ Artisan found"; else echo "❌ Artisan missing"; exit 1; fi
 
       - name: 📤 Upload Build Artifact
@@ -65,35 +64,39 @@ jobs:
           path: deploy/
 
   # ===========================================================
-  # 2️⃣ DEV DEPLOYMENT (Auto)
+  # 2️⃣ DEPLOY JOBS
   # ===========================================================
+
   deploy-dev:
     name: 🌱 Deploy to Dev
     runs-on: ubuntu-latest
     needs: build
     environment: dev
-
     steps:
       - uses: actions/download-artifact@v4
         with:
           name: qros_build
           path: build/
+          merge-multiple: true
 
-      - name: 🧩 Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: 🔐 Copy Dev Environment File
-        run: |
-          mkdir -p build
-          cp .env.dev build/.env
+        run: cp .env.dev build/.env
 
-      - name: 🚀 Upload via SSH (SCP)
+      - name: 🔑 Setup SSH Key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+
+      - name: 🚀 Upload to Dev via SCP
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: "build/."
+          source: "build/*"
           target: ${{ secrets.DEPLOY_PATH_DEV }}
 
       - name: 🧠 Run Laravel Commands (Dev)
@@ -104,16 +107,14 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             cd ${{ secrets.DEPLOY_PATH_DEV }}
-            if [ ! -f artisan ]; then echo "❌ Artisan not found in ${{ secrets.DEPLOY_PATH_DEV }}"; exit 1; fi
+            chmod -R 775 storage bootstrap/cache || true
+            php artisan storage:link || true
             php artisan migrate --force
             php artisan optimize:clear
             php artisan config:cache
             php artisan route:cache
             php artisan view:cache
 
-  # ===========================================================
-  # 3️⃣ TEST DEPLOYMENT (Manual Approval)
-  # ===========================================================
   deploy-test:
     name: 🧪 Deploy to Test
     runs-on: ubuntu-latest
@@ -121,28 +122,31 @@ jobs:
     environment:
       name: test
       url: https://test.qros.in
-
     steps:
       - uses: actions/download-artifact@v4
         with:
           name: qros_build
           path: build/
+          merge-multiple: true
 
-      - name: 🧩 Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: 🔐 Copy Test Environment File
-        run: |
-          mkdir -p build
-          cp .env.test build/.env
+        run: cp .env.test build/.env
 
-      - name: 🚀 Upload via SSH (SCP)
+      - name: 🔑 Setup SSH Key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+
+      - name: 🚀 Upload to Test via SCP
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: "build/."
+          source: "build/*"
           target: ${{ secrets.DEPLOY_PATH_TEST }}
 
       - name: 🧠 Run Laravel Commands (Test)
@@ -153,15 +157,13 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             cd ${{ secrets.DEPLOY_PATH_TEST }}
+            chmod -R 775 storage bootstrap/cache || true
             php artisan migrate --force
             php artisan optimize:clear
             php artisan config:cache
             php artisan route:cache
             php artisan view:cache
 
-  # ===========================================================
-  # 4️⃣ PREPROD DEPLOYMENT (Manual Approval)
-  # ===========================================================
   deploy-preprod:
     name: 🚀 Deploy to Preprod
     runs-on: ubuntu-latest
@@ -169,28 +171,31 @@ jobs:
     environment:
       name: preprod
       url: https://preprod.qros.in
-
     steps:
       - uses: actions/download-artifact@v4
         with:
           name: qros_build
           path: build/
+          merge-multiple: true
 
-      - name: 🧩 Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: 🔐 Copy Preprod Environment File
-        run: |
-          mkdir -p build
-          cp .env.preprod build/.env
+        run: cp .env.preprod build/.env
 
-      - name: 🚀 Upload via SSH (SCP)
+      - name: 🔑 Setup SSH Key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+
+      - name: 🚀 Upload to Preprod via SCP
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: "build/."
+          source: "build/*"
           target: ${{ secrets.DEPLOY_PATH_PREPROD }}
 
       - name: 🧠 Run Laravel Commands (Preprod)
@@ -201,15 +206,13 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             cd ${{ secrets.DEPLOY_PATH_PREPROD }}
+            chmod -R 775 storage bootstrap/cache || true
             php artisan migrate --force
             php artisan optimize:clear
             php artisan config:cache
             php artisan route:cache
             php artisan view:cache
 
-  # ===========================================================
-  # 5️⃣ PRODUCTION DEPLOYMENT (Manual Final Approval)
-  # ===========================================================
   deploy-prod:
     name: 🏁 Deploy to Production
     runs-on: ubuntu-latest
@@ -217,28 +220,31 @@ jobs:
     environment:
       name: production
       url: https://qros.in
-
     steps:
       - uses: actions/download-artifact@v4
         with:
           name: qros_build
           path: build/
+          merge-multiple: true
 
-      - name: 🧩 Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: 🔐 Copy Production Environment File
-        run: |
-          mkdir -p build
-          cp .env.prod build/.env
+        run: cp .env.prod build/.env
 
-      - name: 🚀 Upload via SSH (SCP)
+      - name: 🔑 Setup SSH Key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+
+      - name: 🚀 Upload to Production via SCP
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: "build/."
+          source: "build/*"
           target: ${{ secrets.DEPLOY_PATH_PROD }}
 
       - name: 🧠 Run Laravel Commands (Production)
@@ -249,8 +255,12 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             cd ${{ secrets.DEPLOY_PATH_PROD }}
+            php artisan down || true
+            chmod -R 775 storage bootstrap/cache || true
+            php artisan storage:link || true
             php artisan migrate --force
             php artisan optimize:clear
             php artisan config:cache
             php artisan route:cache
             php artisan view:cache
+            php artisan up || true
