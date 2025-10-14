@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>TableTrack - Backup and Restore Module Documentation</title>
+        <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
+        <style>
+            .sidebar {
+                background: #1a1a1a;
+                min-height: 100vh;
+            }
+            .content {
+                background: #f8f9fa;
+            }
+            .nav-link {
+                color: #e2e2e2;
+                padding: 0.75rem 1.5rem;
+                display: block;
+                transition: all 0.3s;
+            }
+            .nav-link:hover,
+            .nav-link.active {
+                background: #2d2d2d;
+                color: #00dffc;
+            }
+            .section {
+                scroll-margin-top: 2rem;
+            }
+            code {
+                background: #2d2d2d;
+                color: #e2e2e2;
+                padding: 0.2rem 0.4rem;
+                border-radius: 0.25rem;
+            }
+        </style>
+    </head>
+    <body class="flex min-h-screen">
+        <!-- Sidebar -->
+        <aside class="sidebar w-64 fixed h-full">
+            <div class="p-6">
+                <img src="assets/images/logo.png" alt="TableTrack Logo" class="x-auto mb-8" />
+            </div>
+            <nav>
+                <a href="#overview" class="nav-link active">Overview</a>
+                <a href="#description" class="nav-link">Description</a>
+                <a href="#features" class="nav-link">Key Features</a>
+                <a href="#technical" class="nav-link">Technical Specs</a>
+                <a href="#ideal-for" class="nav-link">Ideal For</a>
+                <a href="#requirements" class="nav-link">Requirements</a>
+                <a href="#installation" class="nav-link">Installation</a>
+                <a href="#setup" class="nav-link">Setup Guide</a>
+                <!-- <a href="#restore" class="nav-link">Restore Functionality</a> -->
+            </nav>
+            <div class="absolute bottom-0 p-4 text-gray-400 text-sm">
+                <p>© 2025 TableTrack</p>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="content ml-64 flex-1 p-8">
+            <section id="overview" class="section mb-12">
+                <h1 class="text-4xl font-bold mb-6">TableTrack Backup Module</h1>
+                <h2 class="text-2xl text-gray-600 mb-6">Database Backup Compression & Management – Add-on Module for TableTrack</h2>
+                <div class="bg-blue-50 border-l-4 border-blue-500 p-4 mb-8">
+                    <p class="text-blue-700">Compatible with TableTrack v1.2.2 and above</p>
+                </div>
+
+                <div class="bg-yellow-50 border-l-4 border-yellow-500 p-4 mb-8">
+                    <p class="text-yellow-700">
+                        This is an add-on module that works exclusively with the TableTrack application. To purchase TableTrack, please
+                        visit
+                        <a href="https://1.envato.market/tabletrack" class="text-yellow-600 underline" target="_blank"
+                            >TableTrack on CodeCanyon</a
+                        >
+                    </p>
+                </div>
+
+                <div class="grid grid-cols-2 gap-6 mb-8">
+                    <div class="bg-white p-6 rounded-lg shadow">
+                        <h3 class="font-semibold mb-2">Latest Version</h3>
+                        <p>Released: March 17, 2025</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow">
+                        <h3 class="font-semibold mb-2">Support</h3>
+                        <a href="https://froiden.freshdesk.com/support/home" class="text-blue-600 hover:underline" target="_blank"
+                            >Get Help</a
+                        >
+                    </div>
+                </div>
+            </section>
+
+            <section id="description" class="section mb-12">
+                <h2 class="text-3xl font-bold mb-6">Description</h2>
+                <div class="prose max-w-none">
+                    <p class="mb-4">
+                        The Backup Module for TableTrack provides advanced database backup and compression capabilities. It automatically
+                        compresses database-only backups to save storage space and improve transfer speeds.
+                    </p>
+                </div>
+            </section>
+
+            <section id="features" class="section mb-12">
+                <h2 class="text-3xl font-bold mb-6">Key Features</h2>
+                <div class="bg-white p-6 rounded-lg shadow">
+                    <div class="space-y-6">
+                        <div>
+                            <h3 class="text-xl font-semibold mb-3 text-blue-600">1. Automatic Database Compression</h3>
+                            <p class="text-gray-700">
+                                Automatically compresses database-only backups using gzip with maximum compression, reducing file sizes by
+                                70-90% while maintaining data integrity.
+                            </p>
+                        </div>
+                        <div>
+                            <h3 class="text-xl font-semibold mb-3 text-blue-600">2. Flexible Backup Options</h3>
+                            <p class="text-gray-700">
+                                Create backups with or without files, include or exclude modules, and choose between database-only or full
+                                system backups based on your needs.
+                            </p>
+                        </div>
+                        <div>
+                            <h3 class="text-xl font-semibold mb-3 text-blue-600">3. Intelligent File Management</h3>
+                            <p class="text-gray-700">
+                                Automatically handles file extensions (.sql.gz for compressed database, .zip/.tar.gz for full backups) and
+                                provides seamless restore operations.
+                            </p>
+                        </div>
+                        <div>
+                            <h3 class="text-xl font-semibold mb-3 text-blue-600">4. Command Line Interface</h3>
+                            <p class="text-gray-700">
+                                Full command-line support for automated backup scheduling and integration with existing server management
+                                workflows.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="technical" class="section mb-12">
+                <h2 class="text-3xl font-bold mb-6">Technical Specifications</h2>
+                <div class="bg-white p-6 rounded-lg shadow">
+                    <ul class="space-y-3">
+                        <li class="flex items-center">
+                            <svg class="w-5 h-5 mr-2 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                            </svg>
+                            Built on Laravel + Livewire
+                        </li>
+                        <li class="flex items-center">
+                            <svg class="w-5 h-5 mr-2 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                            </svg>
+                            Gzip compression with maximum compression level (-9)
+                        </li>
+                        <li class="flex items-center">
+                            <svg class="w-5 h-5 mr-2 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                            </svg>
+                            Support for both compressed (.sql.gz) and uncompressed backups
+                        </li>
+                        <li class="flex items-center">
+                            <svg class="w-5 h-5 mr-2 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                            </svg>
+                            Automatic fallback to uncompressed backups if compression fails
+                        </li>
+                    </ul>
+                </div>
+            </section>
+
+            <section id="ideal-for" class="section mb-12">
+                <h2 class="text-3xl font-bold mb-6">Ideal For</h2>
+                <div class="bg-white p-6 rounded-lg shadow">
+                    <ul class="space-y-3">
+                        <li class="flex items-center">
+                            <svg class="w-5 h-5 mr-2 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    stroke-width="2"
+                                    d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"
+                                ></path>
+                            </svg>
+                            Restaurants with limited storage space
+                        </li>
+                        <li class="flex items-center">
+                            <svg class="w-5 h-5 mr-2 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    stroke-width="2"
+                                    d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"
+                                ></path>
+                            </svg>
+                            Multi-location restaurant chains
+                        </li>
+                        <li class="flex items-center">
+                            <svg class="w-5 h-5 mr-2 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    stroke-width="2"
+                                    d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"
+                                ></path>
+                            </svg>
+                            Cloud-based restaurant management systems
+                        </li>
+                        <li class="flex items-center">
+                            <svg class="w-5 h-5 mr-2 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    stroke-width="2"
+                                    d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"
+                                ></path>
+                            </svg>
+                            Businesses requiring automated backup solutions
+                        </li>
+                    </ul>
+                </div>
+            </section>
+
+            <section id="requirements" class="section mb-12">
+                <h2 class="text-3xl font-bold mb-6">Requirements</h2>
+                <div class="bg-white p-6 rounded-lg shadow">
+                    <ul class="space-y-3">
+                        <li class="flex items-center">
+                            <svg class="w-5 h-5 mr-2 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    stroke-width="2"
+                                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"
+                                ></path>
+                            </svg>
+                            TableTrack base application (latest version)
+                        </li>
+                        <li class="flex items-center">
+                            <svg class="w-5 h-5 mr-2 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    stroke-width="2"
+                                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"
+                                ></path>
+                            </svg>
+                            Gzip command available on server (for compression)
+                        </li>
+                        <li class="flex items-center">
+                            <svg class="w-5 h-5 mr-2 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    stroke-width="2"
+                                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"
+                                ></path>
+                            </svg>
+                            Gunzip command available (for restore operations)
+                        </li>
+                    </ul>
+                </div>
+            </section>
+
+            <section id="installation" class="section mb-12">
+                <h2 class="text-3xl font-bold mb-6">Installation Guide</h2>
+                <div class="bg-white p-6 rounded-lg shadow">
+                    <p class="mb-4">For detailed installation instructions, please visit our comprehensive guide:</p>
+                    <a
+                        href="https://youtu.be/4mLyhf43_wI"
+                        class="inline-block bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 transition"
+                        target="_blank"
+                    >
+                        View Installation Guide
+                    </a>
+                </div>
+            </section>
+
+            <section id="setup" class="section mb-12">
+                <h2 class="text-3xl font-bold mb-6">Setup Guide</h2>
+                <div class="bg-white p-6 rounded-lg shadow">
+                    <div class="prose max-w-none">
+                        <h3 class="text-xl font-semibold mb-4">Step 1: Initial Configuration</h3>
+                        <p class="mb-4">Follow our detailed setup documentation to configure your backup module:</p>
+                        <a
+                            href="https://froiden.freshdesk.com/support/solutions/folders/43000597419"
+                            target="_blank"
+                            class="text-blue-600 hover:underline"
+                        >
+                            View Setup Documentation
+                        </a>
+
+                        <h3 class="text-xl font-semibold mb-4 mt-6">Step 2: Command Usage Examples</h3>
+                        <div class="bg-gray-100 p-4 rounded-lg mb-4">
+                            <p class="font-mono text-sm">
+                                # Create compressed database-only backup<br />
+                                php artisan backup:database --type=manual --include-files=false<br /><br />
+
+                                # Create backup with files (not compressed)<br />
+                                php artisan backup:database --type=manual --include-files=true<br /><br />
+
+                                # Create backup with files and modules included<br />
+                                php artisan backup:database --type=manual --include-files=true --include-modules=true
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="restore" class="section mb-12">
+                <h2 class="text-3xl font-bold mb-6">Restore Functionality</h2>
+                <div class="bg-white p-6 rounded-lg shadow">
+                    <div class="space-y-6">
+                        <div>
+                            <h3 class="text-xl font-semibold mb-3 text-blue-600">Emergency Restore Tool</h3>
+                            <p class="text-gray-700 mb-4">
+                                The backup module includes an emergency restore tool that allows you to restore your database and files when
+                                you can't access the admin panel. Access it via: <code>yourdomain.com/backup-and-restore/</code>
+                            </p>
+                            <div class="bg-yellow-50 border-l-4 border-yellow-500 p-4 mb-4">
+                                <p class="text-yellow-700"><strong>Security Warning:</strong> Only access by superadmin users.</p>
+                            </div>
+                        </div>
+
+                        <div>
+                            <h3 class="text-xl font-semibold mb-3 text-blue-600">Authentication & Security</h3>
+                            <ul class="list-disc list-inside text-gray-700 space-y-2">
+                                <li>Only superadmin users can access the restore tool</li>
+                                <li>Session-based authentication with automatic logout</li>
+                                <li>Access restricted to localhost and allowed hosts only</li>
+                                <li>CLI mode available for automated restore operations</li>
+                            </ul>
+                        </div>
+
+                        <div>
+                            <h3 class="text-xl font-semibold mb-3 text-blue-600">Supported Backup Formats</h3>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div class="bg-gray-50 p-4 rounded">
+                                    <h4 class="font-semibold mb-2">Database Backups</h4>
+                                    <ul class="text-sm space-y-1">
+                                        <li>• <code>.sql</code> - Uncompressed SQL files</li>
+                                        <li>• <code>.sql.gz</code> - Compressed SQL files (gzip)</li>
+                                    </ul>
+                                </div>
+                                <div class="bg-gray-50 p-4 rounded">
+                                    <h4 class="font-semibold mb-2">Full System Backups</h4>
+                                    <ul class="text-sm space-y-1">
+                                        <li>• <code>.zip</code> - ZIP archives with database and files</li>
+                                        <li>• <code>.tar.gz</code> - Compressed TAR archives</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <h3 class="text-xl font-semibold mb-3 text-blue-600">Restore Process</h3>
+                            <div class="space-y-3">
+                                <div class="flex items-start">
+                                    <div
+                                        class="bg-blue-100 text-blue-800 rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold mr-3 mt-1"
+                                    >
+                                        1
+                                    </div>
+                                    <div>
+                                        <h4 class="font-semibold">File Detection</h4>
+                                        <p class="text-sm text-gray-600">Automatically detects backup format and handles extraction</p>
+                                    </div>
+                                </div>
+                                <div class="flex items-start">
+                                    <div
+                                        class="bg-blue-100 text-blue-800 rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold mr-3 mt-1"
+                                    >
+                                        2
+                                    </div>
+                                    <div>
+                                        <h4 class="font-semibold">Database Restoration</h4>
+                                        <p class="text-sm text-gray-600">Restores database using MySQL command-line tools</p>
+                                    </div>
+                                </div>
+                                <div class="flex items-start">
+                                    <div
+                                        class="bg-blue-100 text-blue-800 rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold mr-3 mt-1"
+                                    >
+                                        3
+                                    </div>
+                                    <div>
+                                        <h4 class="font-semibold">File Extraction</h4>
+                                        <p class="text-sm text-gray-600">Extracts uploaded files and application assets</p>
+                                    </div>
+                                </div>
+                                <div class="flex items-start">
+                                    <div
+                                        class="bg-blue-100 text-blue-800 rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold mr-3 mt-1"
+                                    >
+                                        4
+                                    </div>
+                                    <div>
+                                        <h4 class="font-semibold">Cache Cleanup</h4>
+                                        <p class="text-sm text-gray-600">Clears bootstrap cache and temporary files</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <h3 class="text-xl font-semibold mb-3 text-blue-600">Cloud Storage Support</h3>
+                            <p class="text-gray-700 mb-3">The restore tool supports backups stored in cloud storage (AWS S3):</p>
+                            <ul class="list-disc list-inside text-gray-700 space-y-2">
+                                <li>Automatic detection of cloud-stored backups</li>
+                                <li>Secure download using AWS S3 authentication</li>
+                                <li>Support for different S3 regions and bucket configurations</li>
+                                <li>Automatic cleanup of temporary downloaded files</li>
+                            </ul>
+                        </div>
+
+                        <!-- <div>
+                            <h3 class="text-xl font-semibold mb-3 text-blue-600">CLI Usage</h3>
+                            <div class="bg-gray-100 p-4 rounded-lg">
+                                <p class="font-mono text-sm mb-2">
+                                    # Restore from CLI (requires authentication)<br />
+                                    php restore-backup.php --restore=backup_file.zip<br /><br />
+
+                                    # Check available backups<br />
+                                    php restore-backup.php --list<br /><br />
+
+                                    # Test database connection<br />
+                                    php restore-backup.php --test-db
+                                </p>
+                            </div>
+                        </div> -->
+
+                        <div>
+                            <h3 class="text-xl font-semibold mb-3 text-blue-600">Requirements for Restore</h3>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div class="bg-red-50 p-4 rounded border-l-4 border-red-500">
+                                    <h4 class="font-semibold text-red-800 mb-2">System Requirements</h4>
+                                    <ul class="text-sm space-y-1 text-red-700">
+                                        <li>• MySQL command-line client</li>
+                                        <li>• Gzip/Gunzip for compressed files</li>
+                                        <li>• Tar command for TAR.GZ files</li>
+                                        <li>• PHP ZipArchive extension</li>
+                                    </ul>
+                                </div>
+                                <div class="bg-green-50 p-4 rounded border-l-4 border-green-500">
+                                    <h4 class="font-semibold text-green-800 mb-2">Security Features</h4>
+                                    <ul class="text-sm space-y-1 text-green-700">
+                                        <li>• Superadmin authentication</li>
+                                        <li>• Localhost access restriction</li>
+                                        <li>• Session management</li>
+                                        <li>• Automatic cleanup</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <h3 class="text-xl font-semibold mb-3 text-blue-600">Troubleshooting</h3>
+                            <div class="space-y-3">
+                                <div class="bg-yellow-50 p-4 rounded">
+                                    <h4 class="font-semibold text-yellow-800 mb-2">Common Issues</h4>
+                                    <ul class="text-sm space-y-1 text-yellow-700">
+                                        <li>• <strong>MySQL not found:</strong> Ensure mysql command is in PATH</li>
+                                        <li>• <strong>Permission denied:</strong> Check file permissions and ownership</li>
+                                        <li>• <strong>Memory limit:</strong> Increase PHP memory_limit for large backups</li>
+                                        <li>• <strong>Timeout errors:</strong> Increase max_execution_time for large restores</li>
+                                    </ul>
+                                </div>
+                                <div class="bg-blue-50 p-4 rounded">
+                                    <h4 class="font-semibold text-blue-800 mb-2">Error Logs</h4>
+                                    <p class="text-sm text-blue-700">
+                                        Check PHP error logs and the restore tool's built-in logging for detailed error information. The
+                                        tool logs all operations to help diagnose issues.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <script>
+            // Smooth scrolling for navigation links
+            document.querySelectorAll('a[href^="#"]').forEach((anchor) => {
+                anchor.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    const target = document.querySelector(this.getAttribute('href'));
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                    });
+
+                    // Update active state
+                    document.querySelectorAll('.nav-link').forEach((link) => {
+                        link.classList.remove('active');
+                    });
+                    this.classList.add('active');
+                });
+            });
+
+            // Update active nav link on scroll
+            window.addEventListener('scroll', () => {
+                const sections = document.querySelectorAll('.section');
+                const navLinks = document.querySelectorAll('.nav-link');
+
+                let current = '';
+                sections.forEach((section) => {
+                    const sectionTop = section.offsetTop;
+                    if (window.pageYOffset >= sectionTop - 100) {
+                        current = section.getAttribute('id');
+                    }
+                });
+
+                navLinks.forEach((link) => {
+                    link.classList.remove('active');
+                    if (link.getAttribute('href').substring(1) === current) {
+                        link.classList.add('active');
+                    }
+                });
+            });
+        </script>
+    </body>
+</html>
