@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>TableTrack - Kitchen Module Documentation</title>
+        <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
+        <style>
+            .sidebar {
+                background: #1a1a1a;
+                min-height: 100vh;
+            }
+            .content {
+                background: #f8f9fa;
+            }
+            .nav-link {
+                color: #e2e2e2;
+                padding: 0.75rem 1.5rem;
+                display: block;
+                transition: all 0.3s;
+            }
+            .nav-link:hover,
+            .nav-link.active {
+                background: #2d2d2d;
+                color: #00dffc;
+            }
+            .section {
+                scroll-margin-top: 2rem;
+            }
+            code {
+                background: #2d2d2d;
+                color: #e2e2e2;
+                padding: 0.2rem 0.4rem;
+                border-radius: 0.25rem;
+            }
+        </style>
+    </head>
+    <body class="flex min-h-screen">
+        <!-- Sidebar -->
+        <aside class="sidebar w-64 fixed h-full">
+            <div class="p-6">
+                <img src="assets/images/logo.png" alt="TableTrack Logo" class="x-auto mb-8" />
+            </div>
+            <nav>
+                <a href="#overview" class="nav-link active">Overview</a>
+                <a href="#description" class="nav-link">Description</a>
+                <a href="#features" class="nav-link">Key Features</a>
+                <a href="#technical" class="nav-link">Technical Specs</a>
+                <a href="#ideal-for" class="nav-link">Ideal For</a>
+                <a href="#requirements" class="nav-link">Requirements</a>
+                <a href="#installation" class="nav-link">Installation</a>
+                <a href="#setup" class="nav-link">Setup Guide</a>
+            </nav>
+            <div class="absolute bottom-0 p-4 text-gray-400 text-sm">
+                <p>© 2025 TableTrack</p>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="content ml-64 flex-1 p-8">
+            <section id="overview" class="section mb-12">
+                <h1 class="text-4xl font-bold mb-6">TableTrack Kitchen Module</h1>
+                <h2 class="text-2xl text-gray-600 mb-6">Multi-Kitchen Routing & KOT Printing – Add-on Module for TableTrack</h2>
+                <div class="bg-blue-50 border-l-4 border-blue-500 p-4 mb-8">
+                    <p class="text-blue-700">Compatible with TableTrack v1.2.2 and above</p>
+                </div>
+
+                <div class="bg-yellow-50 border-l-4 border-yellow-500 p-4 mb-8">
+                    <p class="text-yellow-700">
+                        This is an add-on module that works exclusively with the TableTrack application. To purchase TableTrack, please
+                        visit
+                        <a href="https://1.envato.market/tabletrack" class="text-yellow-600 underline" target="_blank"
+                            >TableTrack on CodeCanyon</a
+                        >
+                    </p>
+                </div>
+
+                <div class="grid grid-cols-2 gap-6 mb-8">
+                    <div class="bg-white p-6 rounded-lg shadow">
+                        <h3 class="font-semibold mb-2">Latest Version</h3>
+                        <p>Released: March 17, 2025</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow">
+                        <h3 class="font-semibold mb-2">Support</h3>
+                        <a href="https://froiden.freshdesk.com/support/home" class="text-blue-600 hover:underline" target="_blank"
+                            >Get Help</a
+                        >
+                    </div>
+                </div>
+            </section>
+
+            <section id="description" class="section mb-12">
+                <h2 class="text-3xl font-bold mb-6">Description</h2>
+                <div class="prose max-w-none">
+                    <p class="mb-4">
+                        The Multi-Kitchen Module for TableTrack is designed for high-volume restaurants and cloud kitchens. It allows
+                        seamless kitchen-wise order management and intelligent KOT (Kitchen Order Ticket) generation based on kitchen
+                        assignments.
+                    </p>
+                </div>
+            </section>
+
+            <section id="features" class="section mb-12">
+                <h2 class="text-3xl font-bold mb-6">Key Features</h2>
+                <div class="bg-white p-6 rounded-lg shadow">
+                    <div class="space-y-6">
+                        <div>
+                            <h3 class="text-xl font-semibold mb-3 text-blue-600">1. Kitchen-wise Item Routing</h3>
+                            <p class="text-gray-700">
+                                Assign specific menu items to different kitchen sections (e.g., Grill, Fryer, Beverage). Orders are
+                                automatically split based on these kitchen mappings.
+                            </p>
+                        </div>
+                        <div>
+                            <h3 class="text-xl font-semibold mb-3 text-blue-600">2. Separate KOT for Each Kitchen</h3>
+                            <p class="text-gray-700">
+                                When a customer places an order with items from multiple kitchens, the system generates individual KOTs for
+                                each kitchen, containing only the relevant items.
+                            </p>
+                        </div>
+                        <div>
+                            <h3 class="text-xl font-semibold mb-3 text-blue-600">3. Admin Order View with Kitchen Breakdown</h3>
+                            <p class="text-gray-700">
+                                In the admin panel, each order shows a breakdown by kitchen, giving managers full visibility into
+                                preparation responsibilities.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="technical" class="section mb-12">
+                <h2 class="text-3xl font-bold mb-6">Technical Specifications</h2>
+                <div class="bg-white p-6 rounded-lg shadow">
+                    <ul class="space-y-3">
+                        <li class="flex items-center">
+                            <svg class="w-5 h-5 mr-2 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                            </svg>
+                            Built on Laravel + Livewire
+                        </li>
+                        <li class="flex items-center">
+                            <svg class="w-5 h-5 mr-2 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                            </svg>
+                            POS front-end compatible (Tailwind 3 UI)
+                        </li>
+                    </ul>
+                </div>
+            </section>
+
+            <section id="ideal-for" class="section mb-12">
+                <h2 class="text-3xl font-bold mb-6">Ideal For</h2>
+                <div class="bg-white p-6 rounded-lg shadow">
+                    <ul class="space-y-3">
+                        <li class="flex items-center">
+                            <svg class="w-5 h-5 mr-2 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    stroke-width="2"
+                                    d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"
+                                ></path>
+                            </svg>
+                            Restaurants with separate kitchen sections
+                        </li>
+                        <li class="flex items-center">
+                            <svg class="w-5 h-5 mr-2 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    stroke-width="2"
+                                    d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"
+                                ></path>
+                            </svg>
+                            Multi-brand cloud kitchens
+                        </li>
+                        <li class="flex items-center">
+                            <svg class="w-5 h-5 mr-2 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    stroke-width="2"
+                                    d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"
+                                ></path>
+                            </svg>
+                            Food courts and hotel kitchens
+                        </li>
+                        <li class="flex items-center">
+                            <svg class="w-5 h-5 mr-2 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    stroke-width="2"
+                                    d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"
+                                ></path>
+                            </svg>
+                            Fine dining restaurants with specialized stations
+                        </li>
+                    </ul>
+                </div>
+            </section>
+
+            <section id="requirements" class="section mb-12">
+                <h2 class="text-3xl font-bold mb-6">Requirements</h2>
+                <div class="bg-white p-6 rounded-lg shadow">
+                    <ul class="space-y-3">
+                        <li class="flex items-center">
+                            <svg class="w-5 h-5 mr-2 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    stroke-width="2"
+                                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"
+                                ></path>
+                            </svg>
+                            TableTrack base application (latest version)
+                        </li>
+                        <li class="flex items-center">
+                            <svg class="w-5 h-5 mr-2 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    stroke-width="2"
+                                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"
+                                ></path>
+                            </svg>
+                            Order and POS modules must be installed and active
+                        </li>
+                    </ul>
+                </div>
+            </section>
+
+            <section id="installation" class="section mb-12">
+                <h2 class="text-3xl font-bold mb-6">Installation Guide</h2>
+                <div class="bg-white p-6 rounded-lg shadow">
+                    <p class="mb-4">For detailed installation instructions, please visit our comprehensive guide:</p>
+                    <a
+                        href="https://youtu.be/4mLyhf43_wI"
+                        class="inline-block bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 transition"
+                        target="_blank"
+                    >
+                        View Installation Guide
+                    </a>
+                </div>
+            </section>
+
+            <section id="setup" class="section mb-12">
+                <h2 class="text-3xl font-bold mb-6">Setup Guide</h2>
+                <div class="bg-white p-6 rounded-lg shadow">
+                    <div class="prose max-w-none">
+                        <h3 class="text-xl font-semibold mb-4">Step 1: Initial Configuration</h3>
+                        <p class="mb-4">Follow our detailed setup documentation to configure your subdomain module:</p>
+                        <a
+                            href="https://froiden.freshdesk.com/support/solutions/folders/43000597419"
+                            target="_blank"
+                            class="text-blue-600 hover:underline"
+                        >
+                            View Setup Documentation
+                        </a>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <script>
+            // Smooth scrolling for navigation links
+            document.querySelectorAll('a[href^="#"]').forEach((anchor) => {
+                anchor.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    const target = document.querySelector(this.getAttribute('href'));
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                    });
+
+                    // Update active state
+                    document.querySelectorAll('.nav-link').forEach((link) => {
+                        link.classList.remove('active');
+                    });
+                    this.classList.add('active');
+                });
+            });
+
+            // Update active nav link on scroll
+            window.addEventListener('scroll', () => {
+                const sections = document.querySelectorAll('.section');
+                const navLinks = document.querySelectorAll('.nav-link');
+
+                let current = '';
+                sections.forEach((section) => {
+                    const sectionTop = section.offsetTop;
+                    if (window.pageYOffset >= sectionTop - 100) {
+                        current = section.getAttribute('id');
+                    }
+                });
+
+                navLinks.forEach((link) => {
+                    link.classList.remove('active');
+                    if (link.getAttribute('href').substring(1) === current) {
+                        link.classList.add('active');
+                    }
+                });
+            });
+        </script>
+    </body>
+</html>
