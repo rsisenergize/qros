@@ -51,6 +51,11 @@ class AddPackage extends Component
     public $flutterwaveMonthlyPlanId;
     public $paystackAnnualPlanId;
     public $paystackMonthlyPlanId;
+    public $paddleAnnualPriceId;
+    public $paddleMonthlyPriceId;
+    public $paddleLifetimePriceId;
+    public $smsCount = -1;
+    public bool $carryForwardSms = false;
 
 
     public function mount()
@@ -60,13 +65,41 @@ class AddPackage extends Component
         $this->packageTypes = array_filter(PackageType::cases(), function ($type) {
             return !in_array($type, [PackageType::TRIAL, PackageType::DEFAULT, PackageType::FREE]);
         });
-        $this->modules = Module::all();
+
+        // Load modules with SMS module filtering
+        $this->modules = $this->getAvailableModules();
+
         $this->currencies = GlobalCurrency::all();
         $this->currencyID = global_setting()->default_currency_id;
         $this->currencySymbol = $this->currencies->first()->currency_symbol ?? null;
         $this->packageType = PackageType::STANDARD->value;
         $this->paymentKey = SuperadminPaymentGateway::first();
         $this->additionalFeatures = Package::ADDITIONAL_FEATURES;
+    }
+
+    /**
+     * Get available modules, filtering out disabled modules
+     */
+    private function getAvailableModules()
+    {
+        return Module::all()
+            ->filter(fn ($module) => $module->name !== 'Sms' || module_enabled('Sms'));
+    }
+
+    public function isSmsModuleSelected()
+    {
+        $smsModule = Module::where('name', 'Sms')->first();
+        return $smsModule && in_array($smsModule->id, $this->selectedModules);
+    }
+
+
+    public function updatedSelectedModules()
+    {
+        // Reset SMS count to default when SMS module is deselected
+        if (!$this->isSmsModuleSelected()) {
+            $this->smsCount = -1; // Default to -1 (unlimited)
+            $this->carryForwardSms = false; // Reset carry forward SMS
+        }
     }
 
     public function updatedCurrencyID()
@@ -142,6 +175,13 @@ class AddPackage extends Component
                 'min:-1',
                 Rule::requiredIf(fn() => in_array('Change Branch', $this->selectedFeatures))
             ],
+            'smsCount' => [
+                Rule::requiredIf(fn() => $this->isSmsModuleSelected()),
+                'nullable',
+                'integer',
+                'min:-1',
+            ],
+            'carryForwardSms' => 'boolean',
         ];
 
         if (($this->monthlyPrice == true ) && ($this->paymentKey->razorpay_status == 1)) {
@@ -176,6 +216,18 @@ class AddPackage extends Component
             $validateRules['paystackAnnualPlanId'] = 'required';
         }
 
+        if (($this->monthlyPrice == true ) && ($this->paymentKey->paddle_status == 1)) {
+            $validateRules['paddleMonthlyPriceId'] = 'required';
+        }
+
+        if (($this->annualPrice == true ) && ($this->paymentKey->paddle_status == 1)) {
+            $validateRules['paddleAnnualPriceId'] = 'required';
+        }
+
+        if (($this->packageType == 'lifetime') && ($this->paymentKey->paddle_status == 1)) {
+            $validateRules['paddleLifetimePriceId'] = 'required';
+        }
+
         $validateMessages = [
             'selectedModules.min' => 'Please select at least one module',
             'packageName.unique' => 'The package name has already been taken.',
@@ -183,6 +235,8 @@ class AddPackage extends Component
             'annualPrice.required_if' => 'The annual price field is required.',
             'monthlyPrice.required_if' => 'The monthly price field is required.',
             'branchLimit.required_if' => 'The branch limit field is required when Change Branch is selected.',
+            'smsCount.required_if' => 'SMS count is required when SMS module is enabled.',
+            'smsCount.min' => 'SMS count must be at least -1 (use -1 for unlimited).',
         ];
 
         $this->validate($validateRules, $validateMessages);
@@ -213,8 +267,13 @@ class AddPackage extends Component
         $package->flutterwave_monthly_plan_id = $this->flutterwaveMonthlyPlanId;
         $package->paystack_annual_plan_id = $this->paystackAnnualPlanId;
         $package->paystack_monthly_plan_id = $this->paystackMonthlyPlanId;
+        $package->paddle_annual_price_id = $this->paddleAnnualPriceId;
+        $package->paddle_monthly_price_id = $this->paddleMonthlyPriceId;
+        $package->paddle_lifetime_price_id = $this->paddleLifetimePriceId;
         $package->additional_features = json_encode($this->selectedFeatures);
         $package->branch_limit = $this->branchLimit;
+        $package->sms_count = $this->smsCount ?? -1;
+        $package->carry_forward_sms = $this->carryForwardSms;
         $package->save();
 
         $package->modules()->sync($this->selectedModules);

@@ -9,6 +9,7 @@ use App\Models\OrderCharge;
 use App\Scopes\BranchScope;
 use App\Models\DeliveryExecutive;
 use App\Models\OrderNumberSetting;
+use Illuminate\Support\Carbon;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -168,6 +169,7 @@ class Order extends BaseModel
             'formatted_order_number' => $formattedNumber
         ];
     }
+
 
     private static function buildFormattedOrderNumber($orderNumber, $settings, $currentTime)
     {

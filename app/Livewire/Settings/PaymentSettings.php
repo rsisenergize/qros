@@ -70,6 +70,7 @@ class PaymentSettings extends Component
     public bool $isGlobalPaypalEnabled = false;
     public bool $isGlobalPayfastEnabled = false;
     public bool $isGlobalPaystackEnabled = false;
+    public bool $isGlobalPaddleEnabled = false;
 
     public $paystackKey;
     public $paystackSecret;
@@ -107,6 +108,7 @@ class PaymentSettings extends Component
         $this->isGlobalPayfastEnabled = (bool) $settings->enable_payfast;
         $this->isGlobalPaystackEnabled = (bool) $settings->enable_paystack;
         $this->isGlobalXenditEnabled = (bool) $settings->enable_xendit;
+        $this->isGlobalPaddleEnabled = (bool) $settings->enable_paddle;
         $this->paymentGateway = PaymentGatewayCredential::first();
 
         $this->setDefaultActivePaymentSetting();
@@ -129,6 +131,7 @@ class PaymentSettings extends Component
             'payfast' => $this->isGlobalPayfastEnabled,
             'paystack' => $this->isGlobalPaystackEnabled,
             'xendit' => $this->isGlobalXenditEnabled,
+            'paddle' => $this->isGlobalPaddleEnabled,
             'offline' => true,
             'qr_code' => true,
             'serviceSpecific' => true,
@@ -157,6 +160,7 @@ class PaymentSettings extends Component
             'payfast' => $this->isGlobalPayfastEnabled,
             'paystack' => $this->isGlobalPaystackEnabled,
             'xendit' => $this->isGlobalXenditEnabled,
+            'paddle' => $this->isGlobalPaddleEnabled,
             'offline' => true,
             'qr_code' => true,
             'serviceSpecific' => true,

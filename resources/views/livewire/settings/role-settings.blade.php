@@ -31,7 +31,7 @@
                             {{ __('permissions.modules.'.$module->name) }}
                         </td>
                     </tr>
-                
+
                     @foreach ($module->permissions as $item)
                     
                     @php

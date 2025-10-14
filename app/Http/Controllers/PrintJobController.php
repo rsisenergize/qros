@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use App\Models\Printer;
 use App\Helper\Files;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Log;
 
 class PrintJobController extends Controller
 {
@@ -100,11 +101,12 @@ class PrintJobController extends Controller
             ->get();
 
         if ($jobs->isEmpty()) {
-            return response()->json(['message' => 'No pending jobs', 'status' => 'error'], 204);
+            return response()->json(['message' => 'No pending jobs', 'status' => 'error'], 200);
         }
 
         // Filter jobs to only include those where the image file exists
         $validJobs = $jobs->filter(function ($job) {
+
             if (empty($job->image_filename)) {
                 return false;
             }
@@ -114,14 +116,14 @@ class PrintJobController extends Controller
         });
 
         if ($validJobs->isEmpty()) {
-            return response()->json(['message' => 'No pending jobs with valid image files', 'status' => 'error'], 204);
+            return response()->json(['message' => 'No pending jobs with valid image files', 'status' => 'error'], 200);
         }
 
         foreach ($validJobs as $item) {
             $item->update(['status' => 'printing']);
         }
 
-        return response()->json($validJobs);
+        return response()->json($validJobs->values()->toArray());
     }
 
     // Electron calls this after attempting to print
@@ -137,6 +139,7 @@ class PrintJobController extends Controller
 
         $printJob->update([
             'status'     => $request->status,
+            'error' => $request->has('error') ? $request->error : null,
             'response_printer'    => $request->printer,
             'printed_at' => $request->printed_at,
         ]);

@@ -7,16 +7,13 @@
                         {{ $order->show_formatted_order_number }}
                     </div>
 
-                    @if ($order->waiter)
-                    <div class="inline-flex items-center gap-1 text-sm text-gray-600 dark:text-gray-400">
-                        <svg width="16" height="16" fill="currentColor" viewBox="0 -2.89 122.88 122.88" version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" style="enable-background:new 0 0 122.88 117.09" xml:space="preserve"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"> <style type="text/css">.st0{fill-rule:evenodd;clip-rule:evenodd;}</style> <g> <path class="st0" d="M36.82,107.86L35.65,78.4l13.25-0.53c5.66,0.78,11.39,3.61,17.15,6.92l10.29-0.41c4.67,0.1,7.3,4.72,2.89,8 c-3.5,2.79-8.27,2.83-13.17,2.58c-3.37-0.03-3.34,4.5,0.17,4.37c1.22,0.05,2.54-0.29,3.69-0.34c6.09-0.25,11.06-1.61,13.94-6.55 l1.4-3.66l15.01-8.2c7.56-2.83,12.65,4.3,7.23,10.1c-10.77,8.51-21.2,16.27-32.62,22.09c-8.24,5.47-16.7,5.64-25.34,1.01 L36.82,107.86L36.82,107.86z M29.74,62.97h91.9c0.68,0,1.24,0.57,1.24,1.24v5.41c0,0.67-0.56,1.24-1.24,1.24h-91.9 c-0.68,0-1.24-0.56-1.24-1.24v-5.41C28.5,63.53,29.06,62.97,29.74,62.97L29.74,62.97z M79.26,11.23 c25.16,2.01,46.35,23.16,43.22,48.06l-93.57,0C25.82,34.23,47.09,13.05,72.43,11.2V7.14l-4,0c-0.7,0-1.28-0.58-1.28-1.28V1.28 c0-0.7,0.57-1.28,1.28-1.28h14.72c0.7,0,1.28,0.58,1.28,1.28v4.58c0,0.7-0.58,1.28-1.28,1.28h-3.89L79.26,11.23L79.26,11.23 L79.26,11.23z M0,77.39l31.55-1.66l1.4,35.25L1.4,112.63L0,77.39L0,77.39z"></path> </g> </g></svg>
-
-                        {{ $order->waiter->name ?? '--' }}
-                    </div>
-
-                    @endif
-
                     <div class="flex flex-col">
+                        @php
+                            $tokenNumber = $order->kot->whereNotNull('token_number')->first()?->token_number;
+                        @endphp
+                        @if ($tokenNumber)
+                            <div class="text-xs font-medium text-gray-700 dark:text-gray-300">@lang('modules.order.tokenNumber') {{ $tokenNumber }}</div>
+                        @endif
                         <div class="flex items-center gap-2">
                             @if ($order->order_type == 'pickup')
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
@@ -60,66 +57,94 @@
                 </h2>
                 <div class="items-center justify-between gap-3 mt-4 space-y-1 lg:flex">
                     <div class="inline-flex gap-4">
-                        @if ($order->order_type == 'dine_in')
-                            @if (!is_null($order->table))
-                                <div @if(user_can('Update Order')) wire:click="$toggle('showTableModal')" @endif @class([
-                                    'p-3 cursor-pointer rounded-lg tracking-wide bg-skin-base/[0.2] text-skin-base',
-                                    'cursor-not-allowed' => !user_can('Update Order'),
-                                ])>
-                                    <h3 wire:loading.class.delay='opacity-50' @class(['font-semibold'])>
-                                        {{ $order->table->table_code ?? '--' }}
-                                    </h3>
-                                </div>
-                            @elseif(user_can('Update Order'))
-                                <x-secondary-button wire:click="$toggle('showTableModal')">@lang('modules.order.setTable')</x-secondary-button>
-                            @endif
-                        @endif
-
                         <div>
-                            @if ($order->customer_id)
-                                <div class="flex items-center gap-2">
-                                    <div class="font-semibold text-gray-700 dark:text-gray-300">{{ $order->customer ? ($order->customer->name ? $order->customer->name : __('modules.customer.walkin')) : '--' }}</div>
-                                    @if(user_can('Update Order'))
-                                        <button  wire:click="$dispatch('showAddCustomerModal', { id: {{ $order->id }}, customerId: {{ $order->customer_id }} })" title="{{__('modules.order.updateCustomerDetails')}}" class="p-1 text-gray-500 transition-colors bg-gray-100 rounded-md hover:text-gray-700 hover:bg-gray-200 rtl:ml-2 ltr:mr-2 dark:text-gray-300 dark:bg-gray-600 dark:hover:text-gray-200 dark:hover:bg-gray-700">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-pencil-square" viewBox="0 0 16 16">
-                                                <path d="M15.502 1.94a.5.5 0 0 1 0 .706L14.459 3.69l-2-2L13.502.646a.5.5 0 0 1 .707 0l1.293 1.293zm-1.75 2.456-2-2L4.939 9.21a.5.5 0 0 0-.121.196l-.805 2.414a.25.25 0 0 0 .316.316l2.414-.805a.5.5 0 0 0 .196-.12l6.813-6.814z"/>
-                                                <path fill-rule="evenodd" d="M1 13.5A1.5 1.5 0 0 0 2.5 15h11a1.5 1.5 0 0 0 1.5-1.5v-6a.5.5 0 0 0-1 0v6a.5.5 0 0 1-.5.5h-11a.5.5 0 0 1-.5-.5v-11a.5.5 0 0 1 .5-.5H9a.5.5 0 0 0 0-1H2.5A1.5 1.5 0 0 0 1 2.5z"/>
-                                            </svg>
-                                        </button>
+                            <div class="flex gap-x-3">
+                                @if ($order->order_type == 'dine_in')
+                                    @if (!is_null($order->table))
+                                        <div
+                                            @if(user_can('Update Order'))
+                                                wire:click="$toggle('showTableModal'); $dispatch('refreshSetTableComponent')"
+                                            @endif
+                                            @class([
+                                                'p-3 cursor-pointer rounded-lg tracking-wide bg-skin-base/[0.2] text-skin-base',
+                                                'cursor-not-allowed' => !user_can('Update Order'),
+                                        ])>
+                                            <h3 wire:loading.class.delay='opacity-50' @class(['font-semibold'])>
+                                                {{ $order->table->table_code ?? '--' }}
+                                            </h3>
+                                        </div>
+                                    @elseif(user_can('Update Order'))
+                                        <x-secondary-button wire:click="$toggle('showTableModal')">@lang('modules.order.setTable')</x-secondary-button>
+                                    @endif
+                                @endif
+                                <div>
+                                    @if ($order->customer_id)
+                                        <div class="flex items-center gap-2">
+                                            <div class="font-semibold text-gray-700 dark:text-gray-300">{{ $order->customer ? ($order->customer->name ? $order->customer->name : __('modules.customer.walkin')) : '--' }}</div>
+                                            @if(user_can('Update Order'))
+                                                <button  wire:click="$dispatch('showAddCustomerModal', { id: {{ $order->id }}, customerId: {{ $order->customer_id }} })" title="{{__('modules.order.updateCustomerDetails')}}" class="p-1 text-gray-500 transition-colors bg-gray-100 rounded-md hover:text-gray-700 hover:bg-gray-200 rtl:ml-2 ltr:mr-2 dark:text-gray-300 dark:bg-gray-600 dark:hover:text-gray-200 dark:hover:bg-gray-700">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-pencil-square" viewBox="0 0 16 16">
+                                                        <path d="M15.502 1.94a.5.5 0 0 1 0 .706L14.459 3.69l-2-2L13.502.646a.5.5 0 0 1 .707 0l1.293 1.293zm-1.75 2.456-2-2L4.939 9.21a.5.5 0 0 0-.121.196l-.805 2.414a.25.25 0 0 0 .316.316l2.414-.805a.5.5 0 0 0 .196-.12l6.813-6.814z"/>
+                                                        <path fill-rule="evenodd" d="M1 13.5A1.5 1.5 0 0 0 2.5 15h11a1.5 1.5 0 0 0 1.5-1.5v-6a.5.5 0 0 0-1 0v6a.5.5 0 0 1-.5.5h-11a.5.5 0 0 1-.5-.5v-11a.5.5 0 0 1 .5-.5H9a.5.5 0 0 0 0-1H2.5A1.5 1.5 0 0 0 1 2.5z"/>
+                                                    </svg>
+                                                </button>
+                                            @endif
+                                        </div>
+                                    @elseif(user_can('Update Order'))
+                                        <a href="javascript:;"
+                                            wire:click="$dispatch('showAddCustomerModal', { id: {{ $order->id }} })"
+                                            class="text-sm underline underline-offset-2">&plus; @lang('modules.order.addCustomerDetails')</a>
+                                    @endif
+                                    <div class="text-xs font-medium text-gray-600 dark:text-gray-400">
+                                        {{ $order->date_time->timezone(timezone())->translatedFormat('M d, Y h:i A') }}
+                                    </div>
+                                </div>
+                            </div>
+                            @if ($order->order_type == 'delivery')
+                                <div>
+                                    @if ($order->deliveryExecutive)
+                                        <div
+                                            class="inline-flex flex-col gap-1 text-sm font-semibold text-gray-700 dark:text-gray-300">
+                                            <div class="text-xs font-medium">@lang('modules.order.deliveryExecutive')</div>
+                                            <div class="text-sm">{{ $order->deliveryExecutive->name }}</div>
+                                        </div>
+                                    @else
+                                        <x-select class="w-full text-sm" wire:model.live='deliveryExecutive'
+                                            wire:change='saveDeliveryExecutive'>
+                                            <option value="">@lang('modules.order.selectDeliveryExecutive')</option>
+                                            @foreach ($deliveryExecutives as $deliveryExecutive)
+                                                <option value="{{ $deliveryExecutive->id }}">{{ $deliveryExecutive->name }}
+                                                </option>
+                                            @endforeach
+                                        </x-select>
                                     @endif
                                 </div>
-                            @elseif(user_can('Update Order'))
-                                <a href="javascript:;"
-                                    wire:click="$dispatch('showAddCustomerModal', { id: {{ $order->id }} })"
-                                    class="text-sm underline underline-offset-2">&plus; @lang('modules.order.addCustomerDetails')</a>
                             @endif
-                            <div class="text-xs font-medium text-gray-600 dark:text-gray-400">
-                                {{ $order->date_time->timezone(timezone())->translatedFormat('M d, Y h:i A') }}
+
+                            <!-- Select Waiter section moved to next line below (block style, mt-2 for spacing) -->
+                            <div class="flex-col mt-4">
+                                @if (user_can('Update Order') && !auth()->user()->roles->pluck('display_name')->contains('Waiter'))
+                                    <div class="gap-2">
+                                        <x-select class="text-sm w-36 xl:w-fit" wire:model.live='selectWaiter'>
+                                            <option value="">@lang('modules.order.selectWaiter')</option>
+                                            @foreach ($users as $item)
+                                                <option value="{{ $item->id }}">{{ $item->name }}</option>
+                                            @endforeach
+                                        </x-select>
+                                    </div>
+                                @elseif($selectWaiter)
+                                    <div class="gap-1 py-2 text-sm dark:text-gray-300 flex items-center">
+                                        <svg class="w-5 h-5 text-gray-600 dark:text-gray-300" fill="currentColor" viewBox="0 0 24 24">
+                                            <path
+                                                d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2m0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3m0 14.2a7.2 7.2 0 0 1-6-3.22c.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08a7.2 7.2 0 0 1-6 3.22" />
+                                        </svg>
+                                        <span class="ml-1">@lang('modules.order.waiter'):</span>
+                                        <span class="ml-1 font-medium">{{ optional($users->firstWhere('id', $selectWaiter))->name }}</span>
+                                    </div>
+                                @endif
                             </div>
                         </div>
-
                     </div>
-
-                    @if ($order->order_type == 'delivery')
-                        <div>
-                            @if ($order->deliveryExecutive)
-                                <div
-                                    class="inline-flex flex-col gap-1 text-sm font-semibold text-gray-700 dark:text-gray-300">
-                                    <div class="text-xs font-medium">@lang('modules.order.deliveryExecutive')</div>
-                                    <div class="text-sm">{{ $order->deliveryExecutive->name }}</div>
-                                </div>
-                            @else
-                                <x-select class="w-full text-sm" wire:model.live='deliveryExecutive'
-                                    wire:change='saveDeliveryExecutive'>
-                                    <option value="">@lang('modules.order.selectDeliveryExecutive')</option>
-                                    @foreach ($deliveryExecutives as $deliveryExecutive)
-                                        <option value="{{ $deliveryExecutive->id }}">{{ $deliveryExecutive->name }}
-                                        </option>
-                                    @endforeach
-                                </x-select>
-                            @endif
-                        </div>
-                    @endif
 
                     <div class="flex flex-col gap-1">
                         <span @class([
@@ -410,7 +435,7 @@
                                     @if (!in_array($order->status, ['paid', 'payment_due', 'canceled']) && user_can('Delete Order'))
                                         <td class="p-2 text-right whitespace-nowrap">
                                             <button class="p-2 text-gray-800 border rounded dark:text-gray-400 dark:border-gray-500 hover:bg-gray-200 dark:hover:bg-gray-900/20"
-                                                wire:click="deleteOrderItems('{{ $item->id }}')">
+                                                wire:click="showDeleteItemModal('{{ $item->id }}')">
                                                 <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"
                                                     xmlns="http://www.w3.org/2000/svg">
                                                     <path fill-rule="evenodd"
@@ -971,6 +996,29 @@
         </x-danger-button>
     </x-slot>
 </x-confirmation-modal>
+
+    <!-- Delete Order Item Confirmation Modal -->
+    <x-confirmation-modal wire:model="confirmDeleteItemModal">
+        <x-slot name="title">
+            @lang('modules.order.deleteOrderItem')?
+        </x-slot>
+
+        <x-slot name="content">
+            @lang('modules.order.deleteOrderItemMessage')
+        </x-slot>
+
+        <x-slot name="footer">
+            <x-secondary-button wire:click="$toggle('confirmDeleteItemModal')" wire:loading.attr="disabled">
+                {{ __('app.cancel') }}
+            </x-secondary-button>
+
+            @if ($itemToDelete)
+            <x-danger-button class="ml-3" wire:click='deleteOrderItems({{ $itemToDelete }})' wire:loading.attr="disabled" wire:key="delete-order-item-{{ $itemToDelete }}">
+                {{ __('Delete') }}
+            </x-danger-button>
+            @endif
+        </x-slot>
+    </x-confirmation-modal>
 
  @endif
 

@@ -21,11 +21,14 @@ class CustomerDisplay extends Component
     public $cashDue = null;
     public $qrCodeImageUrl = null;
     public $formattedOrderNumber = null;
+    public $refreshKey = 0; // Used to force component refresh
 
     // Poll every 1 second
     public function render()
     {
-        $cart = Cache::get('customer_display_cart');
+        $userId = auth()->id();
+        $cacheKey = 'customer_display_cart_user_' . $userId;
+        $cart = Cache::get($cacheKey);
 
         if ($cart) {
             $this->orderNumber = $cart['order_number'];
@@ -65,7 +68,7 @@ class CustomerDisplay extends Component
     public function refreshCustomerDisplay()
     {
         // This method will be called by Pusher to refresh the display
-        // The render method will automatically fetch the latest data from cache
-        $this->dispatch('customer-display-updated');
+        // Increment refreshKey to force Livewire to detect a change and re-render
+        $this->refreshKey++;
     }
 }

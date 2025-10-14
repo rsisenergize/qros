@@ -11,4 +11,8 @@ class OrderType extends Model
 
     protected $guarded = ['id'];
 
+    protected $casts = [
+        'enable_token_number' => 'boolean',
+    ];
+
 }

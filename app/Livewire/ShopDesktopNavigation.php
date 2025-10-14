@@ -2,6 +2,7 @@
 
 namespace App\Livewire;
 
+use App\Models\Table;
 use Livewire\Component;
 use Livewire\Attributes\On;
 
@@ -13,6 +14,7 @@ class ShopDesktopNavigation extends Component
     public $restaurant;
     public $shopBranch;
     public $showWaiterButtonCheck = false;
+    public $table = null;
 
     #[On('updateCartCount')]
     public function updateCartCount($count)
@@ -23,6 +25,21 @@ class ShopDesktopNavigation extends Component
     public function mount()
     {
         $this->showWaiterButtonCheck = $this->checkWaiterButtonStatus();
+        $this->getTableFromRequest();
+    }
+
+    public function getTableFromRequest()
+    {
+        // Check if we have a table hash from the route parameter
+        $tableHash = request()->route('hash');
+        if ($tableHash) {
+            $this->table = Table::where('hash', $tableHash)->first();
+        }
+
+        // If no table found from route, check the 'table' query parameter
+        if (!$this->table && request()->filled('table')) {
+            $this->table = Table::where('hash', request('table'))->first();
+        }
     }
 
     public function checkWaiterButtonStatus()

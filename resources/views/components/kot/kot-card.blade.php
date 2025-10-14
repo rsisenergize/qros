@@ -5,6 +5,11 @@
         <div class="flex items-center justify-between w-full">
             <div class="space-y-1">
                 <div class="font-semibold text-skin-base">@lang('menu.kot') #{{ $kot->kot_number }}</div>
+                @if($kot->token_number)
+                    <div class="text-lg font-bold text-blue-600 dark:text-blue-400">
+                        @lang('modules.order.tokenNumber'): {{ $kot->token_number }}
+                    </div>
+                @endif
                 <div class="text-sm font-medium text-gray-800 dark:text-neutral-400">
                     {{ $kot->items_count }} @lang('modules.menu.item')
                 </div>

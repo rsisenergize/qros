@@ -84,3 +84,30 @@
         <input type="hidden" name="email">
     </form>
 @endif
+
+@if (superadminPaymentGateway()->xendit_status)
+    <script src="https://js.xendit.co/v1/xendit.min.js"></script>
+    <form action="{{ route('xendit.subscription.initiate') }}" method="POST" id="xenditPaymentformNew" class="hidden">
+        @csrf
+        <input type="hidden" name="payment_id">
+        <input type="hidden" name="amount">
+        <input type="hidden" name="currency">
+        <input type="hidden" name="restaurant_id">
+        <input type="hidden" name="package_id">
+        <input type="hidden" name="package_type">
+        <input type="hidden" name="email">
+    </form>
+@endif
+
+@if (superadminPaymentGateway()->paddle_status)
+    <form action="{{ route('paddle.subscription.initiate') }}" method="POST" id="paddlePaymentformNew" class="hidden">
+        @csrf
+        <input type="hidden" name="payment_id">
+        <input type="hidden" name="amount">
+        <input type="hidden" name="currency">
+        <input type="hidden" name="restaurant_id">
+        <input type="hidden" name="package_id">
+        <input type="hidden" name="package_type">
+        <input type="hidden" name="email">
+    </form>
+@endif

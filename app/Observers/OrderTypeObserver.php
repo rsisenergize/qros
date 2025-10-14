@@ -9,7 +9,7 @@ class OrderTypeObserver
 
     public function creating(OrderType $orderType)
     {
-        if (branch()) {
+        if (branch() && $orderType->branch_id == null) {
             $orderType->branch_id = branch()->id;
         }
     }

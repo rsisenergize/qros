@@ -237,6 +237,15 @@
                         @endif
                     </span>
                 </div>
+                @php
+                    $tokenNumber = $order->kot->whereNotNull('token_number')->first()?->token_number;
+                @endphp
+                @if ($tokenNumber)
+                    <div class="info-item">
+                        <span class="info-label">@lang('modules.order.tokenNumber'):</span>
+                        <span>{{ $tokenNumber }}</span>
+                    </div>
+                @endif
                 <div class="info-item">
                     <span class="info-label">@lang('app.dateTime'):</span>
                     <span>{{ $order->date_time->timezone(timezone())->translatedFormat('d M Y H:i') }}</span>

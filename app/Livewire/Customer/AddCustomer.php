@@ -7,6 +7,7 @@ use Livewire\Component;
 use App\Models\Customer;
 use Livewire\Attributes\On;
 use Jantinnerezo\LivewireAlert\LivewireAlert;
+use App\Models\Country;
 use App\Helper\Common;
 
 class AddCustomer extends Component
@@ -22,6 +23,11 @@ class AddCustomer extends Component
     public $showAddCustomerModal = false;
     public $fromPos;
     public $selectedCustomerId = null;
+    public $customerPhoneCode;
+    public $phoneCodeSearch = '';
+    public $phoneCodeIsOpen = false;
+    public $allPhoneCodes;
+    public $filteredPhoneCodes;
     public $searchQuery = '';
     public $editingFields = [
         'name' => false,
@@ -30,6 +36,39 @@ class AddCustomer extends Component
         'address' => false
     ];
 
+
+    public function mount()
+    {
+        // Initialize phone codes
+        $this->allPhoneCodes = collect(Country::pluck('phonecode')->unique()->filter()->values());
+        $this->filteredPhoneCodes = $this->allPhoneCodes;
+        
+        // Set default phone code from restaurant
+        $this->customerPhoneCode = restaurant()->phone_code ?? $this->allPhoneCodes->first();
+    }
+    public function updatedPhoneCodeIsOpen($value)
+    {
+        if (!$value) {
+            $this->reset(['phoneCodeSearch']);
+            $this->updatedPhoneCodeSearch();
+        }
+    }
+
+    public function updatedPhoneCodeSearch()
+    {
+        $this->filteredPhoneCodes = $this->allPhoneCodes->filter(function ($phonecode) {
+            return str_contains($phonecode, $this->phoneCodeSearch);
+        })->values();
+    }
+
+    public function selectPhoneCode($phonecode)
+    {
+        $this->customerPhoneCode = $phonecode;
+        $this->phoneCodeIsOpen = false;
+        $this->phoneCodeSearch = '';
+        $this->updatedPhoneCodeSearch();
+    }
+    
     #[On('showAddCustomerModal')]
     public function showAddCustomer($id = null, $customerId = null, $fromPos = false)
     {
@@ -42,6 +81,7 @@ class AddCustomer extends Component
             if ($customer) {
                 $this->customerName = $customer->name;
                 $this->customerPhone = $customer->phone;
+                $this->customerPhoneCode = $customer->phone_code;
                 $this->customerEmail = $customer->email;
                 $this->customerAddress = $customer->delivery_address;
             }
@@ -98,6 +138,7 @@ class AddCustomer extends Component
             $this->selectedCustomerId = $customer->id;
             $this->customerName = $customer->name;
             $this->customerPhone = $customer->phone;
+            $this->customerPhoneCode = $customer->phone_code;
             $this->customerEmail = $customer->email;
             $this->customerAddress = $customer->delivery_address;
             $this->searchQuery = ''; // Clear the search query
@@ -163,30 +204,32 @@ class AddCustomer extends Component
     public function submitForm()
     {
         $this->validate([
-            'customerName' => 'required'
+            'customerName' => 'required|string|max:255',
+            'customerPhoneCode' => 'required',
+            'customerPhone' => 'required',
+            'customerEmail' => 'nullable|email',
+            'customerAddress' => 'nullable|string|max:500',
         ]);
 
-        // Optimized: Find existing customer by priority (email > phone > id/name)
+        // Check for existing customer by email or phone
         $existingCustomer = null;
-        $query = Customer::where('restaurant_id', restaurant()->id);
-
+        
         if (!empty($this->customerEmail)) {
-            $query->where('email', $this->customerEmail);
-        } elseif (!empty($this->customerPhone)) {
-            $query->where('phone', $this->customerPhone);
-        } elseif (!empty($this->selectedCustomerId)) {
-            $query->where('name', $this->customerName);
-        } else {
-            $query = null;
+            $existingCustomer = Customer::where('restaurant_id', restaurant()->id)
+                ->where('email', $this->customerEmail)
+                ->first();
         }
-
-        if ($query) {
-            $existingCustomer = $query->first();
+        
+        if (!$existingCustomer && !empty($this->customerPhone)) {
+            $existingCustomer = Customer::where('restaurant_id', restaurant()->id)
+                ->where('phone', $this->customerPhone)
+                ->first();
         }
-
 
         $customerData = [
             'name' => $this->customerName,
+            'phone' => $this->customerPhone,
+            'phone_code' => $this->customerPhoneCode,
         ];
 
         foreach (
@@ -201,10 +244,17 @@ class AddCustomer extends Component
             }
         }
 
-        // Update or create the customer
-        $customer = $existingCustomer
-            ? tap($existingCustomer)->update($customerData)
-            : Customer::create($customerData);
+        if (!empty($this->customerAddress)) {
+            $customerData['delivery_address'] = $this->customerAddress;
+        }
+
+        // Update existing customer or create new one
+        if ($existingCustomer) {
+            $customer = tap($existingCustomer)->update($customerData);
+        } else {
+            $customerData['restaurant_id'] = restaurant()->id;
+            $customer = Customer::create($customerData);
+        }
 
         if (!is_null($this->order)) {
             $this->order->customer_id = $customer->id;
@@ -235,6 +285,7 @@ class AddCustomer extends Component
     {
         $this->customerName = '';
         $this->customerPhone = '';
+        $this->customerPhoneCode = restaurant()->phone_code ?? $this->allPhoneCodes->first();
         $this->customerEmail = '';
         $this->customerAddress = '';
         $this->searchQuery = '';
@@ -251,6 +302,8 @@ class AddCustomer extends Component
 
     public function render()
     {
-        return view('livewire.customer.add-customer');
+        return view('livewire.customer.add-customer', [
+            'phonecodes' => $this->filteredPhoneCodes,
+        ]   );
     }
 }

@@ -38,11 +38,17 @@ class RoleSettings extends Component
     
     public function mount()
     {
-        $this->permissions = Module::with(['permissions.roles'])->get();
-        $this->roles = Role::where('display_name', '<>', 'Admin')
-                          ->where('display_name', '<>', 'Super Admin')
-                          ->where('restaurant_id', restaurant()->id)
-                          ->get();
+        $this->permissions = $this->enabledModules(['permissions.roles']);
+
+        $this->roles = Role::whereNotIn('display_name', ['Admin', 'Super Admin'])
+            ->where('restaurant_id', restaurant()->id)
+            ->get();
+    }
+
+    private function enabledModules(array $relations = [])
+    {
+        return Module::with($relations)->get()
+            ->filter(fn ($m) => $m->name !== 'Sms' || (module_enabled('Sms') && in_array('Sms', restaurant_modules())));
     }
 
     public function setPermission($roleID, $permissionID)

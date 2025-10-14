@@ -237,6 +237,22 @@
                     </div>
 
                 </div>
+                <!-- Table Lock Settings Section -->
+                <div class="md:col-span-2 bg-gray-50 dark:bg-gray-700/50 p-6 rounded-lg">
+                    <h4 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                        @lang('modules.settings.tableSettings')
+                    </h4>
+                    <div class="grid gap-4 grid-cols-1 sm:grid-cols-2">
+                        <div class="p-3 bg-white dark:bg-gray-800 rounded-lg shadow-sm">
+                            <x-label for="tableLockTimeoutMinutes" :value="__('modules.settings.tableLockTimeoutMinutes')" class="!mb-1" />
+                            <p class="text-sm text-gray-500 dark:text-gray-400 mb-3">@lang('modules.settings.tableLockTimeoutMinutesDescription')</p>
+                            <x-input id="tableLockTimeoutMinutes" class="block w-full mt-1" type="number" min="1"
+                                placeholder="{{ __('placeholders.tableLockTimeoutPlaceholder') }}" wire:model='tableLockTimeoutMinutes' />
+                            <x-input-error for="tableLockTimeoutMinutes" class="mt-2" />
+                        </div>
+                    </div>
+
+                </div>
                 <!-- Social Media Links Section -->
                 <div class="md:col-span-2 bg-gray-50 dark:bg-gray-700/50 p-6 rounded-lg">
                     <h4 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
@@ -315,7 +331,7 @@
                     <h4 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
                         @lang('modules.settings.headerCustomization')
                     </h4>
-                    
+
                     <div class="grid gap-4">
                         <!-- Header Type Selection -->
                         <div class="p-4 bg-white dark:bg-gray-800 rounded-lg shadow-sm">
@@ -350,14 +366,14 @@
                                 <x-label for="newImages" :value="__('modules.settings.headerImages')" class="!mb-1" />
                                 <p class="text-sm text-gray-500 dark:text-gray-400 mb-3">@lang('modules.settings.headerImagesDescription')</p>
                                 <div class="mt-1">
-                                    <input type="file" 
-                                           wire:model="newImages" 
-                                           multiple 
-                                           accept="image/*" 
+                                    <input type="file"
+                                           wire:model="newImages"
+                                           multiple
+                                           accept="image/*"
                                            class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-skin-base file:text-white hover:file:bg-skin-base/80 border border-gray-300 rounded-md shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
                                 </div>
                                 <x-input-error for="newImages" class="mt-2" />
-                                
+
                                 <!-- Existing Images -->
                                 @if($headerImages && count($headerImages) > 0)
                                     <div class="mt-4">

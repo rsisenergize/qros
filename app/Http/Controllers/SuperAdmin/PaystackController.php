@@ -83,7 +83,7 @@ class PaystackController extends Controller
 
         // Customer details
         $request->email = restaurant()->email;
-        $request->phone = restaurant()->phone_number;
+        $request->phone = (string) restaurant()->phone_number;
         $request->fname = restaurant()->name;
         $request->additional_info = [
             'restaurant_id' => restaurant()->id,

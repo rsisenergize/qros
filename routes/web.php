@@ -1,8 +1,8 @@
 <?php
 
-
-
+use App\Http\Controllers\OtpLoginController;
 use App\Exports\PaymentExport;
+use App\Livewire\CustomerDisplay;
 use App\Http\Middleware\SuperAdmin;
 use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Support\Facades\Route;
@@ -11,15 +11,20 @@ use App\Http\Controllers\PosController;
 use App\Http\Controllers\AreaController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\MenuController;
+use App\Http\Controllers\PlanController;
 use App\Http\Controllers\ShopController;
 use App\Http\Middleware\DisableFrontend;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\StaffController;
 use App\Http\Controllers\TableController;
 use App\Http\Middleware\LocaleMiddleware;
+use App\Http\Controllers\QRCodeController;
+use App\Http\Controllers\ReportController;
 use App\Http\Controllers\StripeController;
 use App\Http\Controllers\BillingController;
 use App\Http\Controllers\PackageController;
+use App\Http\Controllers\PaymentController;
+use App\Http\Controllers\ViewPngController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\MenuItemController;
 use App\Http\Controllers\DashboardController;
@@ -27,40 +32,36 @@ use App\Http\Controllers\CustomMenuController;
 use App\Http\Controllers\RestaurantController;
 use App\Http\Controllers\LandingSiteController;
 use App\Http\Controllers\ReservationController;
+use App\Http\Middleware\CustomerSiteMiddleware;
+use App\Http\Middleware\VerifyRestaurantAccess;
 use App\Http\Controllers\CustomModuleController;
 use App\Http\Controllers\ItemCategoryController;
 use App\Http\Controllers\ItemModifierController;
 use App\Http\Controllers\GlobalSettingController;
 use App\Http\Controllers\ModifierGroupController;
+use App\Http\Controllers\PaypalPaymentController;
 use App\Http\Controllers\WaiterRequestController;
+use App\Http\Controllers\XenditPaymentController;
+use App\Http\Controllers\SuperAdmin\XenditController;
+use App\Http\Controllers\SuperAdmin\XenditWebhookController;
+use App\Http\Controllers\DatabaseBackupController;
 use App\Http\Controllers\OnboardingStepController;
 use App\Http\Controllers\PayfastPaymentController;
 use App\Http\Controllers\PaystackPaymentController;
 use App\Http\Controllers\DeliveryExecutiveController;
 use App\Http\Controllers\RestaurantPaymentController;
 use App\Http\Controllers\RestaurantSettingController;
+use App\Http\Controllers\SuperAdmin\PaypalController;
 use App\Http\Controllers\SuperadminSettingController;
-use App\Http\Controllers\DatabaseBackupController;
 use App\Http\Controllers\FlutterwavePaymentController;
+use App\Http\Controllers\SuperAdmin\PayfastController;
+use App\Http\Controllers\SuperAdmin\PaystackController;
 use App\Http\Controllers\SuperAdmin\FlutterwaveController;
 use App\Http\Controllers\SuperAdmin\StripeWebhookController;
+use App\Http\Controllers\SuperAdmin\PayFastWebhookController;
+use App\Http\Controllers\SuperAdmin\PaystackWebhookController;
 use App\Http\Controllers\SuperAdmin\RazorpayWebhookController;
 use App\Http\Controllers\SuperAdmin\FlutterwaveWebhookController;
-use App\Http\Controllers\XenditPaymentController;
-use App\Http\Controllers\SuperAdmin\PaypalController;
-use App\Http\Controllers\PaypalPaymentController;
-use App\Http\Controllers\SuperAdmin\PayFastWebhookController;
-use App\Http\Controllers\SuperAdmin\PayfastController;
-use App\Http\Controllers\SuperAdmin\PaystackWebhookController;
-use App\Http\Controllers\SuperAdmin\PaystackController;
-use App\Http\Controllers\PaymentController;
-use App\Http\Controllers\QRCodeController;
-use App\Http\Controllers\ReportController;
-use App\Http\Controllers\PlanController;
-use App\Livewire\CustomerDisplay;
-use App\Http\Middleware\CustomerSiteMiddleware;
-use App\Http\Middleware\VerifyRestaurantAccess;
-use App\Http\Controllers\ViewPngController;
 
 
 Route::get('/manifest.json', [HomeController::class, 'manifest'])->name('manifest');
@@ -101,6 +102,12 @@ Route::get('/stripe/license-success-callback', [StripeController::class, 'licens
 Route::post('/flutterwave/initiate-payment', [FlutterwaveController::class, 'initiatePayment'])->name('flutterwave.initiate-payment');
 Route::get('/flutterwave/callback', [FlutterwaveController::class, 'paymentCallback'])->name('flutterwave.callback');
 
+// OTP Login Routes
+Route::get('/otp-login', [OtpLoginController::class, 'showOtpLoginForm'])->name('otp.login');
+Route::post('/otp/send', [OtpLoginController::class, 'sendOtp'])->name('otp.send');
+Route::post('/otp/verify', [OtpLoginController::class, 'verifyOtp'])->name('otp.verify');
+Route::post('/otp/resend', [OtpLoginController::class, 'resendOtp'])->name('otp.resend');
+
 Route::post('/paypal/initiate-payment', [PaypalController::class, 'initiatePayment'])->name('paypal.initiate-payment');
 Route::get('billing/paypal-recurring', [PaypalController::class, 'payWithPaypalRecurrring'])->name('billing.paypal-recurring');
 Route::get('/paypal/lifetime/success', [PaypalController::class, 'paypalLifetimeSuccess'])->name('paypal.lifetime.success');
@@ -110,6 +117,8 @@ Route::get('billing/payfast-success', [PayFastController::class, 'payFastPayment
 Route::get('billing/payfast-cancel', [PayFastController::class, 'payFastPaymentCancel'])->name('billing.payfast-cancel');
 
 Route::post('/paystack/initiate-payment', [PaystackController::class, 'initiatePaystackPayment'])->name('paystack.initiate-payment');
+Route::post('/xendit/initiate-payment', [XenditController::class, 'initiatePaystackPayment'])->name('xendit.initiate-payment');
+
 Route::get('/paystack/callback', [PaystackController::class, 'handleGatewayCallback'])->name('paystack.callback');
 
 
@@ -177,6 +186,7 @@ Route::middleware(['auth', config('jetstream.auth_session'), 'verified', VerifyR
     Route::resource('waiter-requests', WaiterRequestController::class);
 
     Route::get('/customer-display', [\App\Http\Controllers\PosController::class, 'customerDisplay'])->name('customer.display');
+    Route::get('/customer-order-board', [\App\Http\Controllers\PosController::class, 'customerOrderBoard'])->name('customer.order-board');
 });
 
 Route::middleware(['auth', config('jetstream.auth_session'), 'verified', SuperAdmin::class])->group(function () {
@@ -227,6 +237,15 @@ Route::post('/webhook/notify/{company}/{reference}', [PayfastPaymentController::
 Route::post('/webhook/paypal-webhook/{hash}', [PaypalPaymentController::class, 'handleGatewayWebhook'])->name('paypal.webhook');
 Route::get('paypal/success', [PaypalPaymentController::class, 'success'])->name('paypal.success');
 Route::get('paypal/cancel', [PaypalPaymentController::class, 'cancel'])->name('paypal.cancel');
+
+// Paddle Subscription Routes
+Route::post('/paddle/subscription/initiate', [\App\Http\Controllers\SuperAdmin\PaddleController::class, 'initiatePaddlePayment'])->name('paddle.subscription.initiate');
+Route::get('/paddle/checkout', [\App\Http\Controllers\SuperAdmin\PaddleController::class, 'showCheckoutPage'])->name('paddle.checkout.page');
+Route::match(['get', 'post'], '/paddle/subscription/callback', [\App\Http\Controllers\SuperAdmin\PaddleController::class, 'handleGatewayCallback'])->name('paddle.subscription.callback');
+Route::match(['get', 'post'], '/paddle/subscription/failed', [\App\Http\Controllers\SuperAdmin\PaddleController::class, 'paymentFailed'])->name('paddle.subscription.failed');
+
+// Paddle Webhook Routes
+Route::post('/webhook/save-paddle-webhook/{hash}', [\App\Http\Controllers\SuperAdmin\PaddleWebhookController::class, 'handleWebhook'])->name('billing.save-paddle-webhook');
 Route::match(['get', 'post'], '/success', [PaystackPaymentController::class, 'paymentMainSuccess'])->name('paystack.success');
 Route::post('/webhook/paystack-webhook/{hash}', [PaystackPaymentController::class, 'handleGatewayWebhook'])->name('paystack.webhook');
 Route::match(['get', 'post'], '/failed', [PaystackPaymentController::class, 'paymentFailed'])->name('paystack.failed');
@@ -235,9 +254,18 @@ Route::post('/webhook/xendit-webhook/{hash}', [XenditPaymentController::class, '
 Route::match(['get', 'post'], '/xendit/success', [XenditPaymentController::class, 'paymentMainSuccess'])->name('xendit.success');
 Route::match(['get', 'post'], '/xendit/failed', [XenditPaymentController::class, 'paymentFailed'])->name('xendit.failed');
 
+// Xendit Subscription Routes
+Route::post("/xendit/subscription/initiate", [XenditController::class, "initiateXenditPayment"])->name("xendit.subscription.initiate");
+Route::match(["get", "post"], "/xendit/subscription/callback", [XenditController::class, "handleGatewayCallback"])->name("xendit.subscription.callback");
+Route::match(["get", "post"], "/xendit/subscription/failed", [XenditController::class, "paymentFailed"])->name("xendit.subscription.failed");
+
+// Xendit Webhook Routes
+Route::post('/webhook/save-xendit-webhook/{hash}', [XenditWebhookController::class, 'handleSubscriptionWebhook'])->name('billing.save-xendit-webhook');
+
 
 Route::get('/receipt/{id}/preview', [ViewPngController::class, 'preview']); // shows the view to capture
 Route::get('/kot/{id}/preview/{kotPlaceid?}', [ViewPngController::class, 'previewKot'])->name('kot.preview'); // shows KOT view to capture
 
 Route::post('/kot/png', [ViewPngController::class, 'storeKot'])->name('kot.png.store'); // saves KOT PNG
 Route::post('/order/png', [ViewPngController::class, 'storeOrder'])->name('order.png.store'); // saves Order PNG
+Route::post('/report/png', [ViewPngController::class, 'storeReport'])->name('report.png.store'); // saves Report PNG

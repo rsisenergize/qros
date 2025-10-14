@@ -98,4 +98,165 @@ class Table extends BaseModel
             });
     }
 
+    public function tableSession(): HasOne
+    {
+        return $this->hasOne(TableSession::class);
+    }
+
+    public function getOrCreateSession(): TableSession
+    {
+        return $this->tableSession()->firstOrCreate([
+            'table_id' => $this->id
+        ]);
+    }
+
+    public function isLocked(): bool
+    {
+        $session = $this->tableSession;
+        return $session ? $session->isLocked() : false;
+    }
+
+    public function isLockedByUser(int $userId): bool
+    {
+        $session = $this->tableSession;
+        return $session ? $session->isLockedByUser($userId) : false;
+    }
+
+    public function canBeAccessedByUser(int $userId, int $lockTimeoutMinutes = 5): bool
+    {
+        $session = $this->getOrCreateSession();
+        return $session->canBeAccessedByUser($userId, $lockTimeoutMinutes);
+    }
+
+    public function lockForUser(int $userId): array
+    {
+        $session = $this->getOrCreateSession();
+
+        if (!$session->canBeAccessedByUser($userId)) {
+            $lockedByUser = $session->lockedByUser;
+            return [
+                'success' => false,
+                'message' => "This table is currently being handled by {$lockedByUser->name}. Please try again later.",
+                'locked_by' => $lockedByUser->name ?? 'Unknown User',
+                'locked_at' => $session->locked_at?->format('H:i') ?? '',
+            ];
+        }
+
+        if ($session->lockForUser($userId)) {
+            return [
+                'success' => true,
+                'message' => 'Table locked successfully',
+                'session_token' => $session->session_token,
+            ];
+        }
+
+        return [
+            'success' => false,
+            'message' => 'Failed to lock table',
+        ];
+    }
+
+    public function updateActivity(int $userId): bool
+    {
+        $session = $this->tableSession;
+
+        if (!$session || !$session->isLockedByUser($userId)) {
+            return false;
+        }
+
+        return $session->updateActivity();
+    }
+
+    public function unlock(int $userId = null, bool $forceUnlock = false): array
+    {
+        $session = $this->tableSession;
+
+        if (!$session) {
+            return [
+                'success' => true,
+                'message' => 'Table is not locked',
+            ];
+        }
+
+        // If not force unlock, check if user can unlock
+        if (!$forceUnlock && $userId && !$session->isLockedByUser($userId)) {
+            return [
+                'success' => false,
+                'message' => 'You cannot unlock this table',
+            ];
+        }
+
+        if ($session->releaseLock()) {
+            return [
+                'success' => true,
+                'message' => 'Table unlocked successfully',
+            ];
+        }
+
+        return [
+            'success' => false,
+            'message' => 'Failed to unlock table',
+        ];
+    }
+
+    /**
+     * Clean up expired table locks - centralized static method
+     */
+    public static function cleanupExpiredLocks(): array
+    {
+        $lockTimeoutMinutes = restaurant()->table_lock_timeout_minutes ?? 10;
+        $expiredTime = now()->subMinutes($lockTimeoutMinutes);
+
+        // Using the model instance to ensure branch scope is applied
+        $expiredSessions = TableSession::with(['table', 'lockedByUser'])
+            ->where('last_activity_at', '<', $expiredTime)
+            ->whereNotNull('locked_by_user_id')
+            ->get();
+
+        // Cleanup expired locks - also respecting branch scope
+        $affectedRows = TableSession::where('last_activity_at', '<', $expiredTime)
+            ->whereNotNull('locked_by_user_id')
+            ->update([
+                'locked_by_user_id' => null,
+                'locked_at' => null,
+                'last_activity_at' => null,
+                'session_token' => null,
+            ]);
+
+        return [
+            'affected_rows' => $affectedRows,
+            'expired_sessions' => $expiredSessions->toArray(),
+        ];
+    }
+
+    /**
+     * Get currently locked tables data for display
+     */
+    public static function getLockedTablesData(): array
+    {
+        // Auto-cleanup expired locks first
+        self::cleanupExpiredLocks();
+
+        $totalLocked = TableSession::whereNotNull('locked_by_user_id')->count();
+
+        $lockTimeout = restaurant()->table_lock_timeout_minutes ?? 10;
+        $expiredTime = now()->subMinutes($lockTimeout);
+
+        $expiredLocks = TableSession::whereNotNull('locked_by_user_id')
+            ->where('last_activity_at', '<', $expiredTime)
+            ->count();
+
+        $lockedTables = TableSession::with(['table.area', 'lockedByUser'])
+            ->whereNotNull('locked_by_user_id')
+            ->whereNotNull('locked_at')
+            ->orderBy('locked_at', 'desc')
+            ->get()
+            ->toArray();
+
+        return [
+            'total_locked' => $totalLocked,
+            'expired_locks' => $expiredLocks,
+            'locked_tables' => $lockedTables,
+        ];
+    }
 }

@@ -9,7 +9,7 @@ use Illuminate\Http\Request;
 use App\Models\PaypalPayment;
 use Illuminate\Support\Facades\Log;
 use App\Events\SendNewOrderReceived;
-use App\Notifications\SendOrderBill;
+use App\Events\SendOrderBillEvent;
 use Illuminate\Support\Facades\Http;
 use App\Models\PaymentGatewayCredential;
 
@@ -167,7 +167,7 @@ class PaypalPaymentController extends Controller
                 SendNewOrderReceived::dispatch($order);
 
                 if ($order->customer_id) {
-                    $order->customer->notify(new SendOrderBill($order));
+                    SendOrderBillEvent::dispatch($order);
                 }
                 return redirect()->route('order_success', $paypalPayment->order->uuid)->with([
                     'flash.banner' => __('messages.paymentDoneSuccessfully'),

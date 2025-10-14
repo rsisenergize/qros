@@ -1,9 +1,9 @@
 <div>
-    <section class="text-gray-700 body-font overflow-hidden p-4 sm:p-6 lg:p-8 border-gray-200 dark:border-gray-700">
+    <section class="p-4 overflow-hidden text-gray-700 border-gray-200 body-font sm:p-6 lg:p-8 dark:border-gray-700">
 
         <!-- Header Section - Made responsive -->
-        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 px-2 sm:px-7 py-4">
-            <div class="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 w-full sm:w-auto">
+        <div class="flex flex-col items-start justify-between gap-4 px-2 py-4 sm:flex-row sm:items-center sm:px-7">
+            <div class="flex flex-col w-full space-y-2 sm:flex-row sm:space-y-0 sm:space-x-2 sm:w-auto">
                 <!-- Monthly Button -->
                 <button wire:click="toggle"
                     @class([ 'relative px-4 py-2 text-sm font-medium rounded-full transition-colors duration-200 ease-in-out w-full sm:w-auto'
@@ -25,7 +25,7 @@
 
             <!-- Currency Dropdown with Animation -->
             <div class="w-full sm:w-auto">
-                <x-select class="mt-1 block w-full sm:w-auto" wire:model.live="selectedCurrency">
+                <x-select class="block w-full mt-1 sm:w-auto" wire:model.live="selectedCurrency">
                     @foreach ($currencies as $currency)
                         <option value="{{ $currency->id }}">{{ $currency->currency_name }} ({{ $currency->currency_symbol }})</option>
                     @endforeach
@@ -34,7 +34,7 @@
         </div>
 
         <!-- Plans Grid - Responsive design with features in each plan -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mx-2 sm:mx-4">
+        <div class="grid grid-cols-1 gap-6 mx-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 sm:mx-4">
             @foreach ($packages as $package)
                 <div @class([
                     'bg-white dark:bg-slate-800 rounded-lg border-2 relative overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300',
@@ -42,7 +42,7 @@
                     'border-gray-200 dark:border-gray-700' => ! $package->is_recommended
                 ])>
                     @if ($package->is_recommended)
-                        <div class="bg-skin-base text-white text-center py-2">
+                        <div class="py-2 text-center text-white bg-skin-base">
                             <span class="text-sm font-semibold tracking-wider">@lang('modules.billing.popular')</span>
                         </div>
                     @endif
@@ -50,7 +50,7 @@
                     <!-- Plan Header -->
                     <div class="p-6 text-center border-b border-gray-200 dark:border-gray-700">
                         <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-2">{{ $package->package_name }}</h3>
-                        
+
                         <!-- Price -->
                         <div class="mb-4">
                             @if ($package->is_free)
@@ -69,8 +69,8 @@
                                 <svg data-popover-target="popover-default-pricing-{{ $package->id }}" data-popover-placement="bottom" class="w-4 h-4 text-gray-400 hover:text-gray-500 cursor-help" aria-hidden="true" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
                                     <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"></path>
                                 </svg>
-                                <div data-popover id="popover-default-pricing-{{ $package->id }}" role="tooltip" class="absolute text-wrap z-10 invisible inline-block text-sm text-gray-600 transition-opacity duration-300 bg-white border border-gray-200 rounded-lg shadow-sm opacity-0 w-52 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-400">
-                                    <div class="p-3 break-words space-y-2">
+                                <div data-popover id="popover-default-pricing-{{ $package->id }}" role="tooltip" class="absolute z-10 invisible inline-block text-sm text-gray-600 transition-opacity duration-300 bg-white border border-gray-200 rounded-lg shadow-sm opacity-0 text-wrap w-52 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-400">
+                                    <div class="p-3 space-y-2 break-words">
                                         <p>@lang('modules.package.planExpire')</p>
                                     </div>
                                     <div data-popper-arrow></div>
@@ -86,7 +86,7 @@
                     <!-- Features List -->
                     <div class="p-6">
                         <h4 class="text-lg font-semibold text-gray-900 dark:text-white mb-4 text-center">@lang('landing.features')</h4>
-                        
+
                         @php
                             $packageAllModules = array_merge(
                                 $package->modules->pluck('name')->toArray(),
@@ -123,11 +123,11 @@
                             $package->package_type == App\Enums\PackageType::DEFAULT)
                             <div class="w-full">
                                 @if($package->id == $restaurant->package_id && ($restaurant->package_type == ($isAnnual ? 'annual' : 'monthly') || !in_array($restaurant->package_type, ['annual', 'monthly'])))
-                                    <button class="w-full bg-gray-300 dark:bg-gray-600 text-gray-600 dark:text-gray-400 px-4 py-3 rounded-lg font-medium cursor-not-allowed opacity-60 transition-all duration-300">
+                                    <button class="w-full px-4 py-3 font-medium text-gray-600 transition-all duration-300 bg-gray-300 rounded-lg cursor-not-allowed dark:bg-gray-600 dark:text-gray-400 opacity-60">
                                         @lang('modules.package.currentPlan')
                                     </button>
                                 @else
-                                    <button class="w-full bg-skin-base hover:bg-skin-base/90 text-white px-4 py-3 rounded-lg font-medium transition-all duration-300 group flex items-center justify-center gap-2"
+                                    <button class="flex items-center justify-center w-full gap-2 px-4 py-3 font-medium text-white transition-all duration-300 rounded-lg bg-skin-base hover:bg-skin-base/90 group"
                                         wire:click="selectedPackage({{ $package->id }})">
                                         @lang('modules.package.choosePlan')
                                         <svg fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="w-4 h-4 transition-transform duration-500 transform group-hover:translate-x-1" viewBox="0 0 24 24">
@@ -137,7 +137,7 @@
                                 @endif
                             </div>
                         @else
-                            <div class="text-center text-gray-500 dark:text-gray-400 text-sm py-3">
+                            <div class="py-3 text-sm text-center text-gray-500 dark:text-gray-400">
                                 @lang('modules.billing.noPaymentOptionEnable')
                             </div>
                         @endif
@@ -183,13 +183,13 @@
         </x-slot>
 
         <x-slot name="footer">
-            <div class="flex flex-col sm:flex-row gap-2 sm:gap-0 w-full">
-                <x-secondary-button wire:click="$toggle('showPaymentMethodModal')" wire:loading.attr="disabled" class="w-full sm:w-auto order-2 sm:order-1">
+            <div class="flex flex-col w-full gap-2 sm:flex-row sm:gap-0">
+                <x-secondary-button wire:click="$toggle('showPaymentMethodModal')" wire:loading.attr="disabled" class="order-2 w-full sm:w-auto sm:order-1">
                     @lang('app.cancel')
                 </x-secondary-button>
 
                 @if($offlineMethodId)
-                <x-button class="w-full sm:w-auto order-1 sm:order-2 sm:ml-3" wire:click="{{ $show === 'authorize' ? 'offlinePaymentSubmit' : 'switchPaymentMethod(\'authorize\')' }}" wire:loading.attr="disabled">
+                <x-button class="order-1 w-full sm:w-auto sm:order-2 sm:ml-3" wire:click="{{ $show === 'authorize' ? 'offlinePaymentSubmit' : 'switchPaymentMethod(\'authorize\')' }}" wire:loading.attr="disabled">
                     @lang($show === 'authorize' ? 'app.save' : 'app.select')
                 </x-button>
                 @endif
@@ -199,12 +199,12 @@
 
     @if(!$free)
 
-        @if($stripeSettings->razorpay_status == 1 || $stripeSettings->stripe_status == 1 || $stripeSettings->flutterwave_status == 1 || $stripeSettings->paypal_status == 1 || $stripeSettings->payfast_status == 1 || $stripeSettings->paystack_status == 1)
+        @if($stripeSettings->razorpay_status == 1 || $stripeSettings->stripe_status == 1 || $stripeSettings->flutterwave_status == 1 || $stripeSettings->paypal_status == 1 || $stripeSettings->payfast_status == 1 || $stripeSettings->paystack_status == 1 || $stripeSettings->xendit_status == 1 || $stripeSettings->paddle_status == 1)
             @push('scripts')
                 <script src="https://code.jquery.com/jquery-3.7.0.min.js" integrity="sha256-2Pmvv0kuTBOenSvLm6bvfBSSHrUJ+3A7x6P5Ebd07/g=" crossorigin="anonymous"></script>
                 <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
                 <script src="https://checkout.flutterwave.com/v3.js"></script>
-                <script src="https://www.paypal.com/sdk/js?client-id={{ $stripeSettings->client_id }}&currency={{ $selectedCurrencyCode }}"></script>
+                <script src="https://www.paypal.com/sdk/js?client-id={{ $stripeSettings->paypal_client }}&currency={{ $selectedCurrencyCode }}"></script>
                 <script src="https://js.paystack.co/v1/inline.js"></script>
                 @script
                     <script>
@@ -314,6 +314,7 @@
 
                                 form.submit();
                             });
+
                             $wire.on('redirectToPayfast', (params) => {
                                 const form = document.getElementById('payfastPaymentForm');
                                 const paramsData = params[0].params;
@@ -366,6 +367,61 @@
 
                                 form.submit();
                             });
+
+                             $wire.on('redirectToXendit', (params) => {
+                                const form = document.getElementById('xenditPaymentformNew');
+                                const paramsData = params[0].params;
+
+                                // Clear existing inputs (in case of multiple submissions)
+                                form.innerHTML = '@csrf'; // Reset form with just CSRF token
+
+                                const addHiddenInput = (name, value) => {
+                                    const input = document.createElement('input');
+                                    input.type = 'hidden';
+                                    input.name = name;
+                                    input.value = value;
+                                    form.appendChild(input);
+                                };
+
+                                addHiddenInput('payment_id', paramsData.payment_id);
+                                addHiddenInput('amount', paramsData.amount);
+                                addHiddenInput('currency', paramsData.currency);
+                                addHiddenInput('restaurant_id', paramsData.restaurant_id);
+                                addHiddenInput('package_id', paramsData.package_id);
+                                addHiddenInput('package_type', paramsData.package_type);
+                                addHiddenInput('email', paramsData.email);
+
+                                form.submit();
+                            });
+
+                            $wire.on('redirectToPaddle', (params) => {
+                                const form = document.getElementById('paddlePaymentformNew');
+                                const paramsData = params[0].params;
+
+                                // Clear existing inputs (in case of multiple submissions)
+                                form.innerHTML = '@csrf'; // Reset form with just CSRF token
+
+                                const addHiddenInput = (name, value) => {
+                                    const input = document.createElement('input');
+                                    input.type = 'hidden';
+                                    input.name = name;
+                                    input.value = value;
+                                    form.appendChild(input);
+                                };
+
+                                addHiddenInput('payment_id', paramsData.payment_id);
+                                addHiddenInput('amount', paramsData.amount);
+                                addHiddenInput('currency', paramsData.currency);
+                                addHiddenInput('restaurant_id', paramsData.restaurant_id);
+                                addHiddenInput('package_id', paramsData.package_id);
+                                addHiddenInput('package_type', paramsData.package_type);
+                                addHiddenInput('email', paramsData.email);
+
+                                form.submit();
+                            });
+
+
+
                         });
                     </script>
                 @endscript

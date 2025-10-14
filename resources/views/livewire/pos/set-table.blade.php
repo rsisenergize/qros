@@ -1,5 +1,5 @@
 <div>
-    <div class="flex flex-col my-4 grid gap-6 grid-cols-3">
+    <div class="my-4 grid gap-6 grid-cols-3">
         <!-- Card Section -->
         <div class="space-y-8 col-span-2">
             @foreach ($tables as $area)
@@ -13,26 +13,88 @@
 
                     <div class="grid sm:grid-cols-3 gap-3 sm:gap-4">
                         @foreach ($area->tables as $item)
+                            @php
+                                $isLocked = $item->tableSession?->isLocked() ?? false;
+                                $isLockedByCurrentUser = $isLocked && $item->tableSession?->locked_by_user_id === auth()->id();
+                                $isLockedByOtherUser = $isLocked && $item->tableSession?->locked_by_user_id !== auth()->id();
+                                $isActive = $item->status == 'active';
+                                $isInactive = $item->status == 'inactive';
+                            @endphp
+
                             <a href="javascript:;" wire:click="setOrderTable({{ $item }})" wire:key="table-{{ $item->id }}"
-                                @class([ 'relative w-full group flex items-center justify-center border shadow-sm rounded-lg hover:shadow-md transition-all duration-200'
-                                , 'dark:bg-gray-700 dark:border-gray-600' , 'bg-red-50'=> $item->status == 'inactive',
-                                'bg-white' => $item->status == 'active'
+                                @class(['relative w-full group flex items-center justify-center border shadow-sm rounded-lg hover:shadow-md transition-all duration-200',
+                                    'dark:bg-gray-700 dark:border-gray-600',
+                                    'bg-red-50' => $isInactive,
+                                    'bg-white hover:bg-gray-50' => $isActive && !$isLocked,
+                                    'bg-orange-50 border-orange-200' => $isLockedByOtherUser,
+                                    'bg-blue-50 border-blue-200' => $isLockedByCurrentUser
                                 ])>
+                                <!-- Lock indicator for locked tables -->
+                                @if($isLocked)
+                                    <div class="absolute top-2 right-2 z-10 transition-transform hover:scale-110">
+                                        @if(user()->hasRole('Admin_' . user()->restaurant_id))
+                                            <!-- User can unlock their own tables or admin can unlock any table -->
+                                            <button wire:click.stop="forceUnlockTable({{ $item->id }})"
+                                                @class([
+                                                    'relative group p-1 rounded-full shadow-sm hover:shadow-md transition-all duration-200 text-white',
+                                                    'bg-blue-500 hover:bg-blue-600' => $isLockedByCurrentUser,
+                                                    'bg-red-500 hover:bg-red-600' => !$isLockedByCurrentUser,
+                                                ])
+                                                title="{{ $isLockedByCurrentUser ? __('modules.table.lockedByYou') : __('modules.table.forceUnlock') }} at {{ $item->tableSession->locked_at->format('H:i') }}">
+
+                                                <!-- Locked icon (shows by default) -->
+                                                <svg class="w-3.5 h-3.5 group-hover:opacity-0 group-hover:scale-0 transition-all duration-200" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14v3m-3-6V7a3 3 0 1 1 6 0v4m-8 0h10a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1v-7a1 1 0 0 1 1-1"/>
+                                                </svg>
+
+                                                <!-- Unlock icon (shows on hover) -->
+                                                <svg class="w-3 h-3 absolute inset-0 m-auto opacity-0 scale-0 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14v3m4-6V7a3 3 0 1 1 6 0v4M5 11h10a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-7a1 1 0 0 1 1-1Z"/>
+                                                </svg>
+                                            </button>
+                                        @elseif($isLockedByCurrentUser)
+                                            <!-- User can unlock their own locked tables -->
+                                            <button wire:click.stop="forceUnlockTable({{ $item->id }})"
+                                                class="bg-blue-500 text-white p-1 rounded-full shadow hover:shadow-md transition-all duration-200"
+                                                title="@lang('modules.table.lockedByYou') at {{ $item->tableSession->locked_at->format('H:i') }}">
+                                                <svg class="w-3.5 h-3.5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14v3m4-6V7a3 3 0 1 1 6 0v4M5 11h10a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-7a1 1 0 0 1 1-1Z"/>
+                                                </svg>
+                                            </button>
+                                        @else
+                                            <!-- Other users can only see the lock status -->
+                                            <div class="bg-orange-500 text-white p-1 rounded-full shadow cursor-help hover:shadow-md transition-all duration-200"
+                                                title="@lang('modules.table.locked') by {{ $item->tableSession?->lockedByUser->name ?? 'Unknown' }} at {{ $item->tableSession->locked_at->format('H:i') }}">
+                                                <svg class="w-3.5 h-3.5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14v3m-3-6V7a3 3 0 1 1 6 0v4m-8 0h10a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1v-7a1 1 0 0 1 1-1"/>
+                                                </svg>
+                                            </div>
+                                        @endif
+                                    </div>
+                                @endif
+
                                 <div class="p-3">
                                     <div class="flex flex-col space-y-2 items-center justify-center">
-                                    @if ($item->status == 'inactive')
+                                        @if ($isInactive)
                                             <div class="inline-flex text-xs gap-1 text-red-600 font-semibold">
                                                 @lang('app.inactive')
                                             </div>
-                                    @endif
-                                        <div @class([
-                                            'p-2 rounded-lg tracking-wide',
-                                        'bg-green-100 text-green-600' => $item->available_status == 'available',
-                                        'bg-red-100 text-red-600' => $item->available_status == 'reserved',
-                                        'bg-blue-100 text-blue-600' => $item->available_status == 'running'
-                                    ])>
+                                        @endif
+
+                                        @php
+                                            $statusClasses = [
+                                                'p-2 rounded-lg tracking-wide',
+                                                'bg-green-100 text-green-600' => $item->available_status == 'available' && !$isLocked,
+                                                'bg-red-100 text-red-600' => $item->available_status == 'reserved',
+                                                'bg-blue-100 text-blue-600' => $item->available_status == 'running',
+                                                'bg-orange-100 text-orange-600' => $isLockedByOtherUser,
+                                                'bg-blue-100 text-blue-600' => $isLockedByCurrentUser
+                                            ];
+                                        @endphp
+
+                                        <div @class($statusClasses)>
                                             <h3 wire:loading.class.delay="opacity-50" class="font-semibold">
-                                        {{ $item->table_code }}
+                                                {{ $item->table_code }}
                                             </h3>
                                         </div>
                                         <p class="text-xs font-medium dark:text-neutral-200 text-gray-500">

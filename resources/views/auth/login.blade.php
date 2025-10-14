@@ -54,6 +54,13 @@
 
             </div>
 
+            {{-- <!-- OTP Login Link -->
+            <div class="text-center mt-4">
+                <a href="{{ route('otp.login') }}" class="text-sm text-gray-500 underline underline-offset-1">
+                    {{ __('auth.loginViaOneTimePassword') }}
+                </a>
+            </div> --}}
+
             @if(!module_enabled('Subdomain') && !global_setting()->disable_landing_site)
             <div class="flex items-center justify-center mt-4">
                 <a href="{{ route('home') }}"

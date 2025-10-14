@@ -61,6 +61,11 @@ class EditPackage extends Component
     public $paystackAnnualPlanId;
     public $paystackMonthlyPlanId;
     public $paystackLifetimePlanId;
+    public $paddleAnnualPriceId;
+    public $paddleMonthlyPriceId;
+    public $paddleLifetimePriceId;
+    public $smsCount; // Add SMS count field
+    public bool $carryForwardSms = false; // Add carry forward SMS field
     public $hasSubscribers = false;
     public $canEditCurrency = true;
 
@@ -100,8 +105,13 @@ class EditPackage extends Component
         $this->flutterwaveMonthlyPlanId = $this->package->flutterwave_monthly_plan_id;
         $this->paystackAnnualPlanId = $this->package->paystack_annual_plan_id;
         $this->paystackMonthlyPlanId = $this->package->paystack_monthly_plan_id;
+        $this->paddleAnnualPriceId = $this->package->paddle_annual_price_id;
+        $this->paddleMonthlyPriceId = $this->package->paddle_monthly_price_id;
+        $this->paddleLifetimePriceId = $this->package->paddle_lifetime_price_id;
         $this->selectedFeatures = $this->package->additional_features ? json_decode($this->package->additional_features, true) : [];
         $this->branchLimit = $this->package->branch_limit;
+        $this->smsCount = $this->package->sms_count; // Initialize SMS count
+        $this->carryForwardSms = $this->package->carry_forward_sms ?? false; // Initialize carry forward SMS
     }
 
     private function initializeFormData()
@@ -113,11 +123,20 @@ class EditPackage extends Component
             PackageType::cases(),
             fn($type) => !in_array($type, [PackageType::TRIAL, PackageType::DEFAULT, PackageType::FREE])
         );
-        $this->modules = Module::all();
+        $this->modules = $this->getAvailableModules();
         $this->currencies = GlobalCurrency::all();
         $this->toggleSelectedModules = count($this->selectedModules) === $this->modules->count();
         $this->additionalFeatures = Package::ADDITIONAL_FEATURES;
         $this->paymentKey = SuperadminPaymentGateway::first();
+    }
+
+    /**
+     * Get available modules, filtering out disabled modules
+     */
+    private function getAvailableModules()
+    {
+        return Module::all()
+            ->filter(fn ($module) => $module->name !== 'Sms' || module_enabled('Sms'));
     }
 
     private function checkPackageSubscriptions()
@@ -209,6 +228,13 @@ class EditPackage extends Component
                 'min:-1',
                 Rule::requiredIf(fn() => in_array('Change Branch', $this->selectedFeatures))
             ],
+            'smsCount' => [
+                Rule::requiredIf(fn() => $this->isSmsModuleSelected()),
+                'nullable',
+                'integer',
+                'min:-1',
+            ],
+            'carryForwardSms' => 'boolean',
         ];
 
         if ($this->paymentKey->razorpay_status == 1) {
@@ -231,6 +257,12 @@ class EditPackage extends Component
             $validateRules['paystackAnnualPlanId'] = $this->annualPrice ? 'required' : 'nullable';
         }
 
+        if ($this->paymentKey->paddle_status == 1) {
+            $validateRules['paddleMonthlyPriceId'] = $this->monthlyPrice ? 'required' : 'nullable';
+            $validateRules['paddleAnnualPriceId'] = $this->annualPrice ? 'required' : 'nullable';
+            $validateRules['paddleLifetimePriceId'] = ($this->packageType === 'lifetime') ? 'required' : 'nullable';
+        }
+
         $validateMessages = [
             'packageName.unique' => 'The package name has already been taken.',
             'price.required_if' => 'The price field is required.',
@@ -242,6 +274,8 @@ class EditPackage extends Component
             'trialDays.required_if' => 'The trial days field is required.',
             'selectedModules.min' => 'Please select at least one module',
             'branchLimit.required_if' => 'The branch limit field is required when Change Branch is selected.',
+            'smsCount.required_if' => 'SMS count is required when SMS module is enabled.',
+            'smsCount.min' => 'SMS count must be at least -1 (use -1 for unlimited).',
         ];
 
         $this->validate($validateRules, $validateMessages);
@@ -281,8 +315,13 @@ class EditPackage extends Component
             'paystack_annual_plan_id' => $this->paystackAnnualPlanId,
             'paystack_monthly_plan_id' => $this->paystackMonthlyPlanId,
             'paystack_lifetime_plan_id' => $this->packageType === PackageType::LIFETIME ? $this->paystackLifetimePlanId : null,
+            'paddle_annual_price_id' => $this->paddleAnnualPriceId,
+            'paddle_monthly_price_id' => $this->paddleMonthlyPriceId,
+            'paddle_lifetime_price_id' => $this->packageType === PackageType::LIFETIME ? $this->paddleLifetimePriceId : null,
             'additional_features' => json_encode($this->selectedFeatures),
             'branch_limit' => $this->branchLimit,
+            'sms_count' => $this->smsCount ?? -1, // Ensure we always save a valid integer
+            'carry_forward_sms' => $this->carryForwardSms,
         ]);
 
         $this->package->modules()->sync($this->selectedModules);
@@ -310,4 +349,20 @@ class EditPackage extends Component
     {
         return view('livewire.forms.edit-package');
     }
+
+    public function isSmsModuleSelected()
+    {
+        $smsModule = Module::where('name', 'Sms')->first();
+        return $smsModule && in_array($smsModule->id, $this->selectedModules);
+    }
+
+    public function updatedSelectedModules()
+    {
+        // Reset SMS count to default when SMS module is deselected
+        if (!$this->isSmsModuleSelected()) {
+            $this->smsCount = -1; // Default to -1 (unlimited)
+            $this->carryForwardSms = false; // Reset carry forward SMS
+        }
+    }
+
 }

@@ -17,7 +17,7 @@
             </p>
         </div>
 
-        <div class="grid grid-cols-1 gap-4 mb-6 sm:grid-cols-2 lg:grid-cols-5">
+        <div class="grid grid-cols-1 gap-4 mb-6 sm:grid-cols-2 lg:grid-cols-6">
             <!-- Total Sales Card -->
             <div class="p-4 bg-skin-base/10 rounded-xl shadow-sm dark:bg-skin-base/10 border border-skin-base/30 dark:border-skin-base/40">
                 <div class="flex items-center justify-between mb-2">
@@ -208,6 +208,32 @@
 
                 </div>
             </div>
+
+            <!-- Outstanding Payments Card -->
+            <div class="p-4 bg-orange-50 rounded-xl shadow-sm dark:bg-orange-900/10 border border-orange-100 dark:border-orange-800">
+                <div class="flex items-center justify-between mb-2">
+                    <h3 class="text-sm font-medium text-orange-700 dark:text-orange-200">@lang('modules.report.outstandingPayments')</h3>
+                    <div class="p-2 bg-orange-100 rounded-lg dark:bg-orange-800/50">
+                        <svg class="w-4 h-4 text-orange-500 dark:text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0"/>
+                        </svg>
+                    </div>
+                </div>
+                <p class="text-3xl break-words font-bold text-orange-700 dark:text-orange-200 mb-4">
+                    {{ currency_format($menuItems->sum('outstanding_amount'), $currencyId) }}
+                </p>
+
+                <div class="space-y-2">
+                    <div class="flex items-center justify-between rounded-lg bg-orange-100 p-3 dark:bg-orange-100">
+                        <span class="text-sm font-medium text-orange-800 dark:text-orange-300">
+                            @lang('modules.report.outstandingOrders')
+                        </span>
+                        <span class="text-sm font-bold text-orange-800 dark:text-orange-300">
+                            {{ $menuItems->sum('outstanding_orders') }}
+                        </span>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- Filter Section -->
@@ -314,6 +340,11 @@
                     @lang('modules.report.paymentMethods')
                 </th>
 
+                <!-- Due Payment Column -->
+                <th class="p-4 text-xs font-medium tracking-wider text-right text-gray-600 uppercase dark:text-gray-300 bg-orange-50 dark:bg-orange-900/20">
+                    @lang('modules.order.due')
+                </th>
+
                 <th class="p-4 text-xs font-medium tracking-wider text-right text-gray-600 uppercase dark:text-gray-300">
                 @lang('modules.order.deliveryFee')
                 </th>
@@ -367,6 +398,9 @@
                 </th>
                 <th class=" py-4 text-xs font-medium tracking-wider text-right text-gray-600 uppercase dark:text-gray-300 bg-green-50 dark:bg-green-900/20">
                 @lang('modules.order.bank_transfer')
+                </th>
+                <th class="p-4 text-xs font-medium tracking-wider text-right text-gray-600 uppercase dark:text-gray-300 bg-orange-50 dark:bg-orange-900/20">
+
                 </th>
                 @if($paymentGateway->razorpay_status)
                 <th class="p-4 text-xs font-medium tracking-wider text-right text-gray-600 uppercase dark:text-gray-300 bg-green-50 dark:bg-green-900/20">
@@ -431,6 +465,9 @@
                 </td>
                 <td class="px-5 text-sm text-right text-gray-900 dark:text-white bg-green-50/50 dark:bg-green-900/10">
                 {{ currency_format($item['bank_transfer_amount'], $currencyId) }}
+                </td>
+                <td class="p-4 text-sm text-right text-gray-900 dark:text-white bg-orange-50/50 dark:bg-orange-900/10">
+                    {{ currency_format($item['outstanding_amount'], $currencyId) }}
                 </td>
                 @if($paymentGateway->razorpay_status)
                 <td class="p-4 text-sm text-right text-gray-900 dark:text-white bg-green-50/50 dark:bg-green-900/10">

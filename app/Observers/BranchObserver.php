@@ -105,7 +105,7 @@ class BranchObserver
         $defaultOrderTypesSlug = ['dine_in', 'delivery', 'pickup'];
 
         foreach ($defaultOrderTypes as $index => $type) {
-            OrderType::firstOrCreate([
+            $branch->orderTypes()->create([
                 'order_type_name' => $type,
                 'branch_id' => $branch->id,
                 'slug' => $defaultOrderTypesSlug[$index],

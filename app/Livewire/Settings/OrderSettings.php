@@ -5,6 +5,7 @@ namespace App\Livewire\Settings;
 use Livewire\Component;
 use App\Models\OrderNumberSetting;
 use App\Models\Branch;
+use App\Models\OrderType;
 use Jantinnerezo\LivewireAlert\LivewireAlert;
 
 class OrderSettings extends Component
@@ -26,6 +27,7 @@ class OrderSettings extends Component
     public $hideMenuItemImageOnPos = false;
     public $hideMenuItemImageOnCustomerSite = false;
     public $settings;
+    public $tokenSettings = [];
 
     public function mount()
     {
@@ -36,6 +38,7 @@ class OrderSettings extends Component
         }
 
         $this->loadSettings($this->branchId);
+        $this->loadTokenSettings();
         $this->activeTab = 'prefix';
 
         $this->hideMenuItemImageOnPos = (bool) restaurant()->hide_menu_item_image_on_pos ?? false;
@@ -188,6 +191,47 @@ class OrderSettings extends Component
             $this->hideMenuItemImageOnPos = $branch->restaurant->hide_menu_item_image_on_pos ?? false;
             $this->hideMenuItemImageOnCustomerSite = $branch->restaurant->hide_menu_item_image_on_customer_site ?? false;
         }
+    }
+
+    protected function loadTokenSettings(): void
+    {
+        $this->tokenSettings = [];
+        if (!$this->branchId) {
+            return;
+        }
+
+        $orderTypes = OrderType::where('branch_id', $this->branchId)->get(['id', 'enable_token_number', 'order_type_name']);
+        foreach ($orderTypes as $type) {
+            $this->tokenSettings[$type->id] = (bool) $type->enable_token_number;
+        }
+    }
+
+    public function saveTokenSettings(): void
+    {
+        $this->validate([
+            'branchId' => 'required|exists:branches,id',
+            'tokenSettings' => 'array',
+        ]);
+
+        $orderTypes = OrderType::where('branch_id', $this->branchId)->pluck('id');
+
+        foreach ($orderTypes as $typeId) {
+            $enabled = (bool) ($this->tokenSettings[$typeId] ?? false);
+            OrderType::where('id', $typeId)->update(['enable_token_number' => $enabled]);
+        }
+
+        $this->alert('success', __('messages.settingsUpdated'), [
+            'position' => 'top-end',
+            'toast' => true,
+        ]);
+    }
+
+    public function getOrderTypesProperty()
+    {
+        return OrderType::where('branch_id', $this->branchId)
+            ->select('id', 'order_type_name', 'enable_token_number')
+            ->orderBy('id')
+            ->get();
     }
 
     public function render()

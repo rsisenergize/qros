@@ -31,6 +31,8 @@ class XenditPaymentController extends Controller
    public function handleGatewayWebhook(Request $request, $restaurantHash)
 {
 
+    info('Xendit Webhook Callback:', $request->all());
+
     $this->setKeys($restaurantHash);
 
     $status = $request->status ?? null;
@@ -38,7 +40,7 @@ class XenditPaymentController extends Controller
     $invoiceId = $request->id ?? null;
     if ($status === 'PAID') {
         try {
-            $xenditPayment = XenditPayment::where('xendit_payment_id', $invoiceId)
+            $xenditPayment = XenditPayment::where('xendit_payment_id', $externalId)
                 ->orWhere('xendit_external_id', $externalId)
                 ->first();
             // $payment = XenditPayment::where('xendit_external_id', $externalId)->first();
@@ -62,7 +64,7 @@ class XenditPaymentController extends Controller
                 [
                     'payment_method' => 'xendit',
                     'amount' => $xenditPayment->amount,
-                    'transaction_id' => $invoiceId,
+                    'transaction_id' => $externalId,
                 ]
             );
 
@@ -74,7 +76,7 @@ class XenditPaymentController extends Controller
 
     if ($status === 'EXPIRED' || $status === 'FAILED') {
         try {
-            $xenditPayment = XenditPayment::where('xendit_payment_id', $invoiceId)
+            $xenditPayment = XenditPayment::where('xendit_payment_id', $externalId)
                 ->orWhere('external_id', $externalId)
                 ->first();
 
@@ -98,6 +100,7 @@ class XenditPaymentController extends Controller
      */
     public function paymentMainSuccess(Request $request)
     {
+        info('Xendit Success Callback:', $request->all());
 
 
         $invoiceId = $request->external;
@@ -117,6 +120,24 @@ class XenditPaymentController extends Controller
             $order->amount_paid = $order->amount_paid + $xenditPayment->amount;
             $order->status = 'paid';
             $order->save();
+
+            // Only create a new Payment if transaction_id is not equal to $invoiceId
+            $existingPayment = Payment::where('order_id', $xenditPayment->order_id)
+                ->where('transaction_id', $invoiceId)
+                ->first();
+
+            if (!$existingPayment) {
+                Payment::updateOrCreate(
+                    [
+                        'order_id' => $xenditPayment->order_id,
+                        'payment_method' => 'xendit',
+                        'amount' => $xenditPayment->amount,
+                    ],
+                    [
+                        'transaction_id' => $invoiceId,
+                    ]
+                );
+            }
 
             Payment::updateOrCreate(
                 [
@@ -147,7 +168,7 @@ class XenditPaymentController extends Controller
      */
     public function paymentFailed(Request $request)
     {
-        $invoiceId = $request->query('invoice_id');
+        $invoiceId = $request->query('external_id');
 
         $xenditPayment = XenditPayment::where('xendit_payment_id', $invoiceId)->first();
 
@@ -157,9 +178,9 @@ class XenditPaymentController extends Controller
         }
 
         session()->flash('flash.banner', 'Payment was cancelled.');
-        session()->flash('flash.bannerStyle', 'warning');
+        session()->flash('flash.bannerStyle', 'danger');
 
-        return redirect()->route('order_success', $xenditPayment->order->uuid);
+        return redirect()->route('dashboard');
     }
 }
 

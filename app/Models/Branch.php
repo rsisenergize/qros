@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use App\Traits\HasBranch;
+use App\Models\OrderType;
 use Spatie\LaravelPackageTools\Concerns\Package\HasServiceProviders;
 
 class Branch extends BaseModel
@@ -117,6 +118,11 @@ class Branch extends BaseModel
     public function itemCategories()
     {
         return $this->hasMany(ItemCategory::class)->withoutGlobalScopes();
+    }
+
+    public function orderTypes()
+    {
+        return $this->hasMany(OrderType::class)->withoutGlobalScopes();
     }
 
     public function generateKotSetting()

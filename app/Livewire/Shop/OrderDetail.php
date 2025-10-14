@@ -14,6 +14,7 @@ use App\Models\RazorpayPayment;
 use App\Models\FlutterwavePayment;
 use App\Models\AdminPayfastPayment;
 use App\Models\AdminPaystackPayment;
+use App\Events\SendOrderBillEvent;
 use App\Models\XenditPayment;
 use App\Notifications\SendOrderBill;
 use Illuminate\Support\Facades\Http;
@@ -389,9 +390,9 @@ class OrderDetail extends Component
                 'external_id' => $externalId,
                 'amount' => $amount,
                 'description' => 'Order Payment #' . $id,
-                'currency' => 'PHP',
+                'currency' => $this->restaurant->currency->currency_code,
                 'success_redirect_url' => route('xendit.success', ['external' => $externalId]),
-                'failure_redirect_url' => route('xendit.failed'),
+                'failure_redirect_url' => route('xendit.failed',  ['external' => $externalId]),
                 'payment_methods' => ['CREDIT_CARD', 'BCA', 'BNI', 'BSI', 'BRI', 'MANDIRI', 'OVO', 'DANA', 'LINKAJA', 'SHOPEEPAY'],
                 'should_send_email' => true,
                 'customer' => [
@@ -415,7 +416,7 @@ class OrderDetail extends Component
             ])->post('https://api.xendit.co/v2/invoices', $data);
 
             $responseData = $response->json();
-          
+
 
             if ($response->successful() && isset($responseData['id'])) {
                 XenditPayment::create([
@@ -491,7 +492,7 @@ class OrderDetail extends Component
     {
         if ($order->customer_id) {
             try {
-                $order->customer->notify(new SendOrderBill($order));
+                SendOrderBillEvent::dispatch($order);
             } catch (\Exception $e) {
                 \Log::error('Error sending order bill email: ' . $e->getMessage());
             }

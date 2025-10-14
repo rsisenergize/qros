@@ -73,7 +73,7 @@ class SuperadminPaymentGateway extends BaseModel
     {
         return ($this->payfast_mode == 'sandbox' ? $this->test_payfast_merchant_key : $this->live_payfast_merchant_key);
     }
-    
+
     public function getPayfastPassphraseAttribute()
     {
         return ($this->payfast_mode == 'sandbox' ? $this->test_payfast_passphrase : $this->live_payfast_passphrase);
@@ -93,4 +93,18 @@ class SuperadminPaymentGateway extends BaseModel
     {
         return ($this->paystack_mode == 'sandbox' ? $this->test_paystack_merchant_email : $this->live_paystack_merchant_email);
     }
+
+    public function getXenditKeyAttribute()
+    {
+        return ($this->xendit_mode == 'sandbox' ? $this->test_xendit_public_key : $this->live_xendit_public_key);
+    }
+
+    public function getXenditSecretAttribute()
+    {
+        return ($this->xendit_mode == 'sandbox' ? $this->test_xendit_secret_key : $this->live_xendit_secret_key);
+    }
+
+
+
+
 }

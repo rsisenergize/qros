@@ -41,6 +41,11 @@ class Kot extends BaseModel
         return $this->belongsTo(KotCancelReason::class, 'cancel_reason_id');
     }
 
+    public function orderType(): BelongsTo
+    {
+        return $this->belongsTo(OrderType::class);
+    }
+
     public static function generateKotNumber($branch)
     {
         $lastKot = Kot::where('branch_id', $branch->id)->latest()->first();
@@ -50,5 +55,30 @@ class Kot extends BaseModel
         }
 
         return 1;
+    }
+
+    public static function generateTokenNumber(int $branchId, ?int $orderTypeId): ?int
+    {
+        if (!$orderTypeId) {
+            return null;
+        }
+
+        $orderType = OrderType::find($orderTypeId);
+        if (!$orderType || !$orderType->enable_token_number) {
+            return null;
+        }
+
+        $tz = restaurant()->timezone ?? 'UTC';
+        $startOfDay = \Illuminate\Support\Carbon::now($tz)->startOfDay();
+        $endOfDay = \Illuminate\Support\Carbon::now($tz)->endOfDay();
+
+        $lastKotWithToken = self::where('branch_id', $branchId)
+            ->where('order_type_id', $orderTypeId)
+            ->whereNotNull('token_number')
+            ->whereBetween('created_at', [$startOfDay, $endOfDay])
+            ->orderByDesc('id')
+            ->first();
+
+        return $lastKotWithToken ? ((int) $lastKotWithToken->token_number + 1) : 1;
     }
 }

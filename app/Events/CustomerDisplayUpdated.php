@@ -13,15 +13,18 @@ class CustomerDisplayUpdated implements ShouldBroadcast
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
     public $orderData;
+    public $userId;
 
     /**
      * Create a new event instance.
      *
      * @param array $orderData
+     * @param int|null $userId
      */
-    public function __construct($orderData = null)
+    public function __construct($orderData = null, $userId = null)
     {
         $this->orderData = $orderData;
+        $this->userId = $userId ?? auth()->id();
     }
 
     /**
@@ -31,7 +34,7 @@ class CustomerDisplayUpdated implements ShouldBroadcast
      */
     public function broadcastOn()
     {
-        return new Channel('customer-display');
+        return new Channel('customer-display-user-' . $this->userId);
     }
 
     /**

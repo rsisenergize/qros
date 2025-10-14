@@ -16,7 +16,7 @@ use App\Models\StripePayment;
 use App\Models\RestaurantPayment;
 use App\Models\GlobalSubscription;
 use App\Events\SendNewOrderReceived;
-use App\Notifications\SendOrderBill;
+use App\Events\SendOrderBillEvent;
 use App\Models\SuperadminPaymentGateway;
 use App\Notifications\RestaurantUpdatedPlan;
 use Illuminate\Support\Facades\Notification;
@@ -296,7 +296,7 @@ class StripeController extends Controller
         SendNewOrderReceived::dispatch($order);
 
         if ($order->customer_id) {
-            $order->customer->notify(new SendOrderBill($order));
+            SendOrderBillEvent::dispatch($order);
         }
     }
 }

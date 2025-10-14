@@ -43,4 +43,10 @@ class PosController extends Controller
         return view('pos.customer-display');
     }
 
+    public function customerOrderBoard()
+    {
+        abort_if((!in_array('Customer Display', restaurant_modules())), 403);
+        return view('pos.customer-order-board');
+    }
+
 }

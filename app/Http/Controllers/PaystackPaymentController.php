@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Http;
 use App\Models\AdminPaystackPayment;
 use App\Models\Order;
 use App\Events\SendNewOrderReceived;
-use App\Notifications\SendOrderBill;
+use App\Events\SendOrderBillEvent;
 
 class PaystackPaymentController extends Controller
 {
@@ -152,7 +152,7 @@ class PaystackPaymentController extends Controller
         SendNewOrderReceived::dispatch($order);
 
         if ($order->customer_id) {
-            $order->customer->notify(new SendOrderBill($order));
+            SendOrderBillEvent::dispatch($order);
         }
     }
 

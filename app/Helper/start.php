@@ -21,72 +21,6 @@ use Nwidart\Modules\Facades\Module;
 use App\Models\OrderNumberSetting;
 use Intervention\Image\Facades\Image;
 
-/**
- * Save a base64 data URL (from html-to-image) as PNG via GD.
- *
- * @param  string $dataUrl   data:image/png;base64,...  (or raw base64)
- * @param  string $name      base filename without extension
- * @param  int    $targetW   resize to this width (keeps aspect). 512 for 80mm, 384 for 58mm.
- * @param  bool   $mono      convert to high-contrast mono (good for thermal)
- * @param  string $disk      storage disk, e.g. 'public'
- * @param  string $dir       directory on disk, e.g. 'receipts'
- * @return array{ok:bool,url?:string,path?:string,width?:int,height?:int,error?:string}
- */
-function save_base64_image_png(
-    string $dataUrl,
-    string $name = 'view',
-    int $targetW = 512,
-    bool $mono = false,
-    string $disk = 'public',
-    string $dir = 'receipts'
-): array {
-    try {
-        // Accept both data URL and raw base64
-        if (preg_match('/^data:image\/(png|jpeg);base64,/', $dataUrl)) {
-            $base64 = substr($dataUrl, strpos($dataUrl, ',') + 1);
-        } else {
-            // assume raw base64
-            $base64 = $dataUrl;
-        }
-
-        $binary = base64_decode($base64, true);
-        if ($binary === false) {
-            return ['ok' => false, 'error' => 'Base64 decode failed'];
-        }
-
-        // Use Intervention/Image (GD driver)
-        $img = Image::make($binary);
-
-        // Resize to target width (keep aspect)
-        if ($targetW > 0 && $img->width() !== $targetW) {
-            $img->resize($targetW, null, function ($c) {
-                $c->aspectRatio();
-                $c->upsize();
-            });
-        }
-
-        // Optional: high-contrast mono for thermal printers
-        if ($mono) {
-            $img->greyscale()->limitColors(2);
-        }
-
-        $filename = sprintf('%s-%s.png', $name, now()->format('Ymd-His'));
-        $path = trim($dir, '/') . '/' . $filename;
-
-        Storage::disk($disk)->put($path, (string) $img->encode('png', 100));
-
-        return [
-            'ok'     => true,
-            'url'    => Storage::disk($disk)->url($path),
-            'path'   => $path,
-            'width'  => $img->width(),
-            'height' => $img->height(),
-        ];
-    } catch (\Throwable $e) {
-        return ['ok' => false, 'error' => $e->getMessage()];
-    }
-}
-
 
 if (!function_exists('user')) {
 
@@ -262,6 +196,10 @@ if (!function_exists('role_permissions')) {
             return session('role_permissions');
         }
 
+        if (is_null(user())) {
+            return [];
+        }
+
         $roleID = user()->roles->first()->id;
         $permissions = Role::where('id', $roleID)->first()->permissions->pluck('name')->toArray();
 
@@ -285,9 +223,9 @@ if (!function_exists('user_can')) {
 }
 
 if (!function_exists('restaurant_modules')) {
-    function restaurant_modules(): array
+    function restaurant_modules($restaurant = null): array
     {
-        $restaurant = restaurant();
+        $restaurant = $restaurant ?: restaurant();
 
         if (!$restaurant) {
             return [];

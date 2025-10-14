@@ -17,6 +17,8 @@ use App\Models\KotCancelReason;
 use App\Models\DeliveryExecutive;
 use App\Models\Kot;
 use App\Models\KotItem;
+use App\Models\User;
+use App\Scopes\BranchScope;
 use Jantinnerezo\LivewireAlert\LivewireAlert;
 
 class OrderDetail extends Component
@@ -48,6 +50,10 @@ class OrderDetail extends Component
     public $totalTaxAmount = 0;
     public $taxMode;
     public $currencyId;
+    public $users;
+    public $selectWaiter;
+    public $confirmDeleteItemModal = false;
+    public $itemToDelete;
 
     public function mount()
     {
@@ -59,6 +65,15 @@ class OrderDetail extends Component
             $this->deliveryExecutive = $this->order->delivery_executive_id;
         }
         $this->cancelReasons = KotCancelReason::where('cancel_order', true)->get();
+
+        $this->users = User::withoutGlobalScope(BranchScope::class)
+            ->where(function ($q) {
+                return $q->where('branch_id', branch()->id)
+                    ->orWhereNull('branch_id');
+            })
+            ->role('waiter_' . restaurant()->id)
+            ->where('restaurant_id', restaurant()->id)
+            ->get();
     }
 
     public function printOrder($orderId)
@@ -107,6 +122,8 @@ class OrderDetail extends Component
         if ($this->taxMode === 'item') {
             $this->totalTaxAmount = $this->order?->total_tax_amount ?? 0;
         }
+
+        $this->selectWaiter = $this->order->waiter_id;
         $this->showOrderDetail = true;
     }
 
@@ -159,6 +176,12 @@ class OrderDetail extends Component
         $this->showAddCustomerModal = true;
     }
 
+    public function showDeleteItemModal($id)
+    {
+        $this->itemToDelete = $id;
+        $this->confirmDeleteItemModal = true;
+    }
+
     public function deleteOrderItems($id)
     {
         $orderItem = OrderItem::find($id);
@@ -184,27 +207,22 @@ class OrderDetail extends Component
 
             if ($this->order->items->count() === 0) {
                 $this->deleteOrder($this->order->id);
-
                 return;
             }
 
-            $this->total = 0;
-            $this->subTotal = 0;
-
-            foreach ($this->order->items as $value) {
-                $this->subTotal = ($this->subTotal + $value->amount);
-                $this->total = ($this->total + $value->amount);
-            }
-
-            foreach ($this->taxes as $value) {
-                $this->total = ($this->total + (($value->tax_percent / 100) * $this->subTotal));
-            }
-
-            Order::where('id', $this->order->id)->update([
-                'sub_total' => $this->subTotal,
-                'total' => $this->total
-            ]);
+            // Recalculate order totals properly
+            $this->recalculateOrderTotals();
         }
+
+        $this->confirmDeleteItemModal = false;
+        $this->itemToDelete = null;
+
+        $this->alert('success', __('messages.orderItemDeleted'), [
+            'toast' => true,
+            'position' => 'top-end',
+            'showCancelButton' => false,
+            'cancelButtonText' => __('app.close')
+        ]);
 
         $this->dispatch('refreshPos');
     }
@@ -400,11 +418,20 @@ class OrderDetail extends Component
                     'cancel_reason_text' => $this->cancelReasonText,
                 ]);
 
+                // Update table status
                 if ($order->table_id) {
-                    Table::where('id', $order->table_id)->update([
-                        'available_status' => 'available',
-                    ]);
+                    $table = Table::find($order->table_id);
+
+                    if ($table) {
+                        $table->update(['available_status' => 'available']);
+
+                        // Release table session lock if exists
+                        if ($table->tableSession) {
+                            $table->tableSession->releaseLock();
+                        }
+                    }
                 }
+
 
                 $this->alert('success', __('messages.orderCanceled'), [
                     'toast' => true,
@@ -581,11 +608,11 @@ class OrderDetail extends Component
         $charge = OrderCharge::find($chargeId);
 
         if ($charge) {
-            $chargeAmount = $charge->charge->getAmount($this->order->sub_total - ($this->order->discount_amount ?? 0));
             $charge->delete();
             $this->order->refresh();
-            $this->total = $this->order->total - $chargeAmount;
-            $this->order->update(['total' => $this->total]);
+
+            // Recalculate order totals properly
+            $this->recalculateOrderTotals();
         }
     }
 
@@ -622,6 +649,111 @@ class OrderDetail extends Component
 
         $this->dispatch('showOrderDetail', id: $this->order->id);
         $this->dispatch('refreshOrders');
+    }
+
+    public function updatedSelectWaiter($value)
+    {
+        if ($this->order) {
+            $this->order->update(['waiter_id' => $value ?: null]);
+
+            $this->alert('success', __('messages.waiterUpdated'), [
+                'toast' => true,
+                'position' => 'top-end',
+                'showCancelButton' => false,
+                'cancelButtonText' => __('app.close')
+            ]);
+        }
+    }
+
+    /**
+     * Recalculate order totals including all components
+     */
+    public function recalculateOrderTotals()
+    {
+        if (!$this->order) {
+            return;
+        }
+
+        // Refresh the order to get latest data
+        $this->order->refresh();
+        $this->order->load(['items', 'charges', 'taxes', 'payments']);
+
+        // Reset totals
+        $this->subTotal = 0;
+        $this->total = 0;
+        $totalTaxAmount = 0;
+
+        // Calculate subtotal from items
+        foreach ($this->order->items as $item) {
+            if ($this->taxMode === 'item') {
+                $isInclusive = restaurant()->tax_inclusive ?? false;
+                if ($isInclusive) {
+                    // For inclusive tax: subtract tax from amount to get subtotal
+                    $this->subTotal += ($item->amount - ($item->tax_amount ?? 0));
+                } else {
+                    // For exclusive tax: amount is subtotal
+                    $this->subTotal += $item->amount;
+                }
+            } else {
+                $this->subTotal += $item->amount;
+            }
+        }
+
+        // Calculate taxes
+        if ($this->taxMode === 'order') {
+            // Order-level taxation
+            foreach ($this->order->taxes as $orderTax) {
+                $taxAmount = ($orderTax->tax->tax_percent / 100) * $this->subTotal;
+                $totalTaxAmount += $taxAmount;
+            }
+        } else {
+            // Item-level taxation
+            $isInclusive = restaurant()->tax_inclusive ?? false;
+            foreach ($this->order->items as $item) {
+                $totalTaxAmount += ($item->tax_amount ?? 0);
+            }
+
+            if (!$isInclusive) {
+                // For exclusive taxes, add tax to total
+                $this->total += $totalTaxAmount;
+            }
+        }
+
+        // Start with subtotal + taxes
+        $this->total = $this->subTotal + $totalTaxAmount;
+
+        // Apply discount
+        $discountAmount = 0;
+        if ($this->order->discount_type === 'percent') {
+            $discountAmount = round(($this->subTotal * $this->order->discount_value) / 100, 2);
+        } elseif ($this->order->discount_type === 'fixed') {
+            $discountAmount = $this->order->discount_value;
+        }
+        $this->total -= $discountAmount;
+
+        // Add charges (delivery fees, service charges, etc.)
+        foreach ($this->order->charges as $charge) {
+            $chargeAmount = $charge->charge->getAmount($this->subTotal - $discountAmount);
+            $this->total += $chargeAmount;
+        }
+
+        // Add tip
+        if ($this->order->tip_amount > 0) {
+            $this->total += $this->order->tip_amount;
+        }
+
+        // Add delivery fee
+        if ($this->order->order_type === 'delivery' && !is_null($this->order->delivery_fee)) {
+            $this->total += $this->order->delivery_fee;
+        }
+
+        // Update the order in database
+        $this->order->update([
+            'sub_total' => $this->subTotal,
+            'total' => $this->total,
+            'discount_amount' => $discountAmount,
+            'total_tax_amount' => $totalTaxAmount
+        ]);
     }
 
     /**

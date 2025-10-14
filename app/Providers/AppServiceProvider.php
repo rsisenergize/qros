@@ -41,6 +41,8 @@ use App\Observers\PaymentObserver;
 use App\Observers\PrinterObserver;
 use App\Http\Middleware\SuperAdmin;
 use App\Models\NotificationSetting;
+use App\Models\TableSession;
+use App\Observers\TableSessionObserver;
 use App\Observers\CurrencyObserver;
 use App\Observers\CustomerObserver;
 use App\Observers\ExpensesObserver;
@@ -128,6 +130,7 @@ class AppServiceProvider extends ServiceProvider
         Printer::observe(PrinterObserver::class);
         KotCancelReason::observe(KotCancelReasonObserver::class);
         OrderType::observe(OrderTypeObserver::class);
+        TableSession::observe(TableSessionObserver::class);
 
         // Implicitly grant "Admin" role all permissions
         // This works in the app by using gate-related functions like auth()->user->can() and @can()
@@ -149,5 +152,5 @@ class AppServiceProvider extends ServiceProvider
 
         // Model::preventLazyLoading(app()->environment('development'));
     }
-    
+
 }

@@ -12,6 +12,7 @@ use Jantinnerezo\LivewireAlert\LivewireAlert;
 use Livewire\Attributes\On;
 use Livewire\Component;
 use Illuminate\Support\Facades\Log;
+use App\Events\SendOrderBillEvent;
 
 class AddPayment extends Component
 {
@@ -476,14 +477,21 @@ class AddPayment extends Component
             ]);
         }
 
-
-        Table::where('id', $this->order->table_id)->update([
-            'available_status' => 'available'
-        ]);
+        // Update table status
+        $table = Table::find($this->order->table_id);
+        
+        if ($table) {
+            $table->update(['available_status' => 'available']);
+            
+            // Release table session lock if exists
+            if ($table->tableSession) {
+                $table->tableSession->releaseLock();
+            }
+        }
 
         if ($this->order->customer_id) {
             try {
-                $this->order->customer->notify(new SendOrderBill($this->order));
+                SendOrderBillEvent::dispatch($this->order);
             } catch (\Exception $e) {
                 Log::error('Error sending notification: ' . $e->getMessage());
             }

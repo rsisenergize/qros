@@ -160,6 +160,39 @@
                 </p>
             </div>
 
+            <div>
+                <x-label for="showPrivacyConsentCheckbox">
+                    <div class="flex items-start space-x-4 p-4 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors duration-200 dark:border-gray-700 dark:hover:bg-gray-700/50">
+                        <div class="flex-shrink-0">
+                            <x-checkbox
+                                class="mt-1 h-5 w-5 rounded border-gray-300 text-primary-600 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-700"
+                                name="showPrivacyConsentCheckbox"
+                                id="showPrivacyConsentCheckbox"
+                                wire:model.live='showPrivacyConsentCheckbox'
+                            />
+                        </div>
+
+                        <div class="flex-1">
+                            <h3 class="text-sm font-semibold text-gray-900 dark:text-white">
+                                @lang('modules.settings.showPrivacyConsentCheckbox')
+                            </h3>
+                            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                                @lang('modules.settings.showPrivacyConsentCheckboxHelp')
+                            </p>
+                        </div>
+                    </div>
+                </x-label>
+            </div>
+
+            <div x-show="$wire.showPrivacyConsentCheckbox" x-transition>
+                <x-label for="privacyPolicyLink" :value="__('modules.settings.privacyPolicyLink')" />
+                <x-input id="privacyPolicyLink" class="block mt-1 w-full" type="url" wire:model='privacyPolicyLink' placeholder="{{ __('placeholders.enterPrivacyPolicyLink')}}" />
+                <x-input-error for="privacyPolicyLink" class="mt-2" />
+                <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                    @lang('modules.settings.privacyPolicyLinkHelp')
+                </p>
+            </div>
+
             <div >
                 <x-label for="requiresApproval">
                     <div class="flex items-start space-x-4 p-4 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors duration-200 dark:border-gray-700 dark:hover:bg-gray-700/50">

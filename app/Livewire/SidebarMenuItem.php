@@ -11,11 +11,14 @@ class SidebarMenuItem extends Component
     public $link;
     public $icon;
     public $active = false;
+    public $customIcon;
 
-    public function mount()
+    public function mount($customIcon = null)
     {
         $this->icon = $this->setIcon($this->icon);
+        $this->customIcon = $customIcon;
     }
+    
 
     public function setIcon($icon)
     {

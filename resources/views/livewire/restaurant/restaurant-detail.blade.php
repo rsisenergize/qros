@@ -224,6 +224,98 @@
 
         </div>
 
+        @php
+            $restaurantHasSms = false;
+            if ($restaurant->package) {
+                $packageModules = $restaurant->package->modules->pluck('name')->toArray();
+                $additionalFeatures = json_decode($restaurant->package->additional_features ?? '[]', true);
+                $allModules = array_unique(array_merge($packageModules, $additionalFeatures));
+                $restaurantHasSms = in_array('Sms', $allModules);
+            }
+        @endphp
+
+        @if(module_enabled('Sms') && $restaurantHasSms)
+            <div class="mb-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-xl font-semibold dark:text-white">@lang('sms::modules.menu.smsSettings')</h3>
+                    @if($packageSmsCount != -1)
+                    <x-button wire:click="$set('showSmsTopupModal', true)" class="inline-flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                        </svg>
+                        @lang('sms::modules.sms.addSmsTopup')
+                    </x-button>
+                    @endif
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    
+                    <!-- Widget 1: Package Limit with Status Badge -->
+                    <div class="items-center justify-between p-4 bg-white border border-gray-200 rounded-lg shadow-sm sm:flex dark:border-gray-700 sm:p-6 dark:bg-gray-800">
+                        <div class="w-full">
+                            <div class="flex items-center justify-between mb-2">
+                                <h3 class="text-base font-normal text-gray-500 dark:text-gray-400">@lang('sms::modules.package.packageLimit')</h3>
+                                @if($packageSmsCount == -1)
+                                    <span class="bg-green-100 uppercase text-green-800 text-xs font-medium px-2.5 py-0.5 rounded dark:bg-green-900 dark:text-green-300">
+                                        @lang('sms::modules.package.unlimited')
+                                    </span>
+                                @else
+                                    @if($isSmsLimitReached)
+                                        <span class="bg-red-100 uppercase text-red-800 text-xs font-medium px-2.5 py-0.5 rounded dark:bg-red-900 dark:text-red-300">
+                                            @lang('sms::modules.package.exhausted')
+                                        </span>
+                                    @else
+                                        <span class="bg-blue-100 uppercase text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded dark:bg-blue-900 dark:text-blue-300">
+                                            @lang('sms::modules.package.active')
+                                        </span>
+                                    @endif
+                                @endif
+                            </div>
+                            @if($packageSmsCount == -1)
+                                <span class="text-2xl font-bold leading-none text-gray-900 sm:text-3xl dark:text-white">∞</span>
+                                <p class="flex items-center text-base font-normal text-gray-500 dark:text-gray-400">
+                                    <span class="flex items-center mr-1.5 text-sm text-gray-500 dark:text-gray-400">
+                                        @lang('sms::modules.package.unlimitedMessagesAllowed')
+                                    </span>
+                                </p>
+                            @else
+                                <span class="text-2xl font-bold leading-none text-gray-900 sm:text-3xl dark:text-white">{{ $packageSmsCount }}</span>
+                                <p class="flex items-center text-base font-normal text-gray-500 dark:text-gray-400">
+                                    <span class="flex items-center mr-1.5 text-sm text-gray-500 dark:text-gray-400">
+                                        @lang('sms::modules.package.totalSmsInPackage')
+                                    </span>
+                                </p>
+                            @endif
+                        </div>
+                    </div>
+
+                    <!-- Widget 2: Used SMS Count -->
+                    <div class="items-center justify-between p-4 bg-white border border-gray-200 rounded-lg shadow-sm sm:flex dark:border-gray-700 sm:p-6 dark:bg-gray-800">
+                        <div class="w-full">
+                            <h3 class="text-base font-normal text-gray-500 dark:text-gray-400">@lang('sms::modules.package.usedSmsCount')</h3>
+                            <span class="text-2xl font-bold leading-none text-gray-900 sm:text-3xl dark:text-white">{{ $usedSmsCount }}</span>
+                            <p class="flex items-center text-base font-normal text-gray-500 dark:text-gray-400">
+                                @if($packageSmsCount != -1)
+                                    @php
+                                        $usagePercent = $packageSmsCount > 0 ? round(($usedSmsCount / $packageSmsCount) * 100, 1) : 0;
+                                    @endphp
+                                    <span class="flex items-center mr-1.5 text-sm {{ $usagePercent > 80 ? 'text-red-500 dark:text-red-400' : 'text-blue-500 dark:text-blue-400' }}">
+                                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                                            @if($usagePercent > 80)
+                                                <path clip-rule="evenodd" fill-rule="evenodd" d="M10 3a.75.75 0 01.75.75v10.638l3.96-4.158a.75.75 0 111.08 1.04l-5.25 5.5a.75.75 0 01-1.08 0l-5.25-5.5a.75.75 0 111.08-1.04l3.96 4.158V3.75A.75.75 0 0110 3z"></path>
+                                            @else
+                                                <path clip-rule="evenodd" fill-rule="evenodd" d="M10 17a.75.75 0 01-.75-.75V5.612L5.29 9.77a.75.75 0 01-1.08-1.04l5.25-5.5a.75.75 0 011.08 0l5.25 5.5a.75.75 0 11-1.08 1.04l-3.96-4.158V16.25A.75.75 0 0110 17z"></path>
+                                            @endif
+                                        </svg>
+                                        {{ $usagePercent }}%
+                                    </span>
+                                    @lang('sms::modules.package.ofPackageUsed')
+                                @endif
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        @endif
 
     </div>
 
@@ -317,6 +409,50 @@
             <x-slot name="footer">
                 <x-secondary-button wire:click="$toggle('showPasswordModal')" wire:loading.attr="disabled">@lang('app.cancel')</x-secondary-button>
             </x-slot>
+    </x-dialog-modal>
+
+    <!-- SMS Top-up Modal -->
+    <x-dialog-modal wire:model.live="showSmsTopupModal">
+        <x-slot name="title">
+            @lang('sms::modules.sms.addSmsTopup')
+        </x-slot>
+
+        <x-slot name="content">
+            <div class="space-y-4">
+                <div>
+                    <x-label for="smsTopupAmount" value="{{ __('sms::modules.package.smsCount') }}" />
+                    <x-input id="smsTopupAmount" class="block mt-1 w-full" type="number" min="1"
+                        wire:model='smsTopupAmount' placeholder="{{ __('sms::modules.sms.enterSmsCount') }}" />
+                    <x-input-error for="smsTopupAmount" class="mt-2"/>
+                </div>
+
+                <div class="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                    <div class="flex items-start">
+                        <svg class="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+                        </svg>
+                        <div class="ml-3">
+                            <p class="text-sm text-blue-800 dark:text-blue-300">
+                                @lang('sms::modules.sms.currentSmsBalance'): <span class="font-semibold">{{ $packageSmsCount == -1 ? '∞ (Unlimited)' : $packageSmsCount }}</span>
+                            </p>
+                            <p class="text-sm text-blue-800 dark:text-blue-300 mt-1">
+                                @lang('sms::modules.sms.usedSms'): <span class="font-semibold">{{ $usedSmsCount }}</span>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </x-slot>
+
+        <x-slot name="footer">
+            <x-secondary-button wire:click="$toggle('showSmsTopupModal')" wire:loading.attr="disabled">
+                @lang('app.cancel')
+            </x-secondary-button>
+
+            <x-button class="ml-3" wire:click="addSmsTopup" wire:loading.attr="disabled">
+                @lang('sms::modules.sms.addTopup')
+            </x-button>
+        </x-slot>
     </x-dialog-modal>
 
 </div>

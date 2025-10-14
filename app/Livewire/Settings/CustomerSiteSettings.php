@@ -38,6 +38,7 @@ class CustomerSiteSettings extends Component
     public $pickupDaysRange;
     public bool $showVeg;
     public bool $showHalal;
+    public int $tableLockTimeoutMinutes;
     public $activeTab = 'settings';
     public $headerType = 'text';
     public $headerText;
@@ -61,6 +62,7 @@ class CustomerSiteSettings extends Component
         $this->autoConfirmOrders = $this->settings->auto_confirm_orders;
         $this->showVeg = $this->settings->show_veg;
         $this->showHalal = $this->settings->show_halal;
+        $this->tableLockTimeoutMinutes = $this->settings->table_lock_timeout_minutes;
         $this->isWaiterRequestEnabledOnDesktop = $this->settings->is_waiter_request_enabled_on_desktop;
         $this->isWaiterRequestEnabledOnMobile = $this->settings->is_waiter_request_enabled_on_mobile;
         $this->isWaiterRequestEnabledOpenByQr = $this->settings->is_waiter_request_enabled_open_by_qr;
@@ -84,7 +86,7 @@ class CustomerSiteSettings extends Component
         } else {
             $this->headerText = __('messages.frontHeroHeading');
         }
-        
+
         // Initialize newImages as empty array
         $this->newImages = [];
     }
@@ -106,6 +108,7 @@ class CustomerSiteSettings extends Component
     {
         $this->validate([
             'defaultReservationStatus' => 'required|in:Confirmed,Checked_In,Cancelled,No_Show,Pending',
+            'tableLockTimeoutMinutes' => 'required|integer|min:1',
             'headerType' => 'required|in:text,image',
             'headerText' => 'required_if:headerType,text',
             'newImages.*' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
@@ -139,6 +142,7 @@ class CustomerSiteSettings extends Component
         $this->settings->is_pwa_install_alert_show = $this->pwaAlertShow;
         $this->settings->show_veg = $this->showVeg;
         $this->settings->show_halal = $this->showHalal;
+        $this->settings->table_lock_timeout_minutes = $this->tableLockTimeoutMinutes;
         $this->settings->save();
 
         // Save header settings
@@ -184,7 +188,7 @@ class CustomerSiteSettings extends Component
             // Clear the newImages after upload
             $this->newImages = [];
         }
-        
+
         // Refresh the header images
         $this->headerImages = $this->cartHeaderSetting->fresh()->images;
     }

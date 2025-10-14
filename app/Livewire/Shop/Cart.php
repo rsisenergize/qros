@@ -42,11 +42,14 @@ use App\Scopes\AvailableMenuItemScope;
 use App\Models\PaymentGatewayCredential;
 use Jantinnerezo\LivewireAlert\LivewireAlert;
 use App\Events\OrderUpdated;
+use App\Traits\PrinterSetting;
+use App\Models\KotPlace;
 
 class Cart extends Component
 {
 
     use LivewireAlert;
+    use PrinterSetting;
 
     public $search;
     public $tableID;
@@ -636,6 +639,8 @@ class Cart extends Component
             'branch_id' => $this->shopBranch->id,
             'kot_number' => (Kot::generateKotNumber($this->shopBranch) + 1),
             'order_id' => $order->id,
+            'order_type_id' => $order->order_type_id,
+            'token_number' => Kot::generateTokenNumber($this->shopBranch->id, $order->order_type_id),
             'note' => $this->orderNote,
             'transaction_id' => $transactionId
         ]);
@@ -734,6 +739,8 @@ class Cart extends Component
             'total_tax_amount' => $order->items->sum('tax_amount'),
             'tax_mode' => $this->taxMode,
         ]);
+
+        $this->printKot($order, $kot);
 
         event(new OrderUpdated($order, 'updated'));
 
@@ -1369,5 +1376,101 @@ class Cart extends Component
             'categoryList' => $categoryList,
             'menuList' => $menuList
         ]);
+    }
+
+
+    public function printKot($order, $kot = null, $kotIds = [])
+    {
+        // Check if the 'kitchen' package is enabled
+        if (in_array('Kitchen', restaurant_modules()) && in_array('kitchen', custom_module_plugins())) {
+            // Get all KOTs for this order (created above)
+
+            if ($kotIds) {
+                $kots = $order->kot()->whereIn('id', $kotIds)->with('items')->get();
+            } else {
+                $kots = $order->kot()->with('items')->get();
+            }
+
+            foreach ($kots as $kot) {
+                $kotPlaceItems = [];
+
+                foreach ($kot->items as $kotItem) {
+                    if ($kotItem->menuItem && $kotItem->menuItem->kot_place_id) {
+                        $kotPlaceId = $kotItem->menuItem->kot_place_id;
+
+                        if (!isset($kotPlaceItems[$kotPlaceId])) {
+                            $kotPlaceItems[$kotPlaceId] = [];
+                        }
+
+                        $kotPlaceItems[$kotPlaceId][] = $kotItem;
+                    }
+                }
+
+                // Get the kot places and their printer settings
+                $kotPlaceIds = array_keys($kotPlaceItems);
+                $kotPlaces = KotPlace::with('printerSetting')->whereIn('id', $kotPlaceIds)->get();
+
+                foreach ($kotPlaces as $kotPlace) {
+                    $printerSetting = $kotPlace->printerSetting;
+
+                    if ($printerSetting && $printerSetting->is_active == 0) {
+                        $printerSetting = Printer::where('is_default', true)->first();
+                    }
+
+                    // If no printer is set, fallback to print URL dispatch
+                    if (!$printerSetting) {
+                        $url = route('kot.print', [$kot->id, $kotPlace?->id]);
+                        $this->dispatch('print_location', $url);
+                        continue;
+                    }
+
+                    try {
+                        switch ($printerSetting->printing_choice) {
+                            case 'directPrint':
+                                $this->handleKotPrint($kot->id, $kotPlace->id);
+                                break;
+                            default:
+                               
+                        }
+                    } catch (\Throwable $e) {
+                        $this->alert('error', __('messages.printerNotConnected') . ' ' . $e->getMessage(), [
+                            'toast' => true,
+                            'position' => 'top-end',
+                            'showCancelButton' => false,
+                            'cancelButtonText' => __('app.close')
+                        ]);
+                    }
+                }
+            }
+        } else {
+            $kotPlace = KotPlace::where('is_default', 1)->first();
+            $printerSetting = $kotPlace->printerSetting;
+
+            // Get the KOT for this order
+            $kot = $kot ?? $order->kot()->first();
+
+            // If no printer is set, fallback to print URL dispatch
+            if (!$printerSetting) {
+                $url = route('kot.print', [$kot->id, $kotPlace?->id]);
+                $this->dispatch('print_location', $url);
+            }
+
+            try {
+                switch ($printerSetting->printing_choice) {
+                    case 'directPrint':
+                        $this->handleKotPrint($kot->id, $kotPlace->id);
+                        break;
+
+                    default:
+                }
+            } catch (\Throwable $e) {
+                $this->alert('error', __('messages.printerNotConnected') . ' ' . $e->getMessage(), [
+                    'toast' => true,
+                    'position' => 'top-end',
+                    'showCancelButton' => false,
+                    'cancelButtonText' => __('app.close')
+                ]);
+            }
+        }
     }
 }

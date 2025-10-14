@@ -8,7 +8,7 @@ use Illuminate\Http\Request;
 use App\Models\FlutterwavePayment;
 use App\Events\SendNewOrderReceived;
 use App\Models\Restaurant;
-use App\Notifications\SendOrderBill;
+use App\Events\SendOrderBillEvent;
 
 class FlutterwavePaymentController extends Controller
 {
@@ -113,7 +113,7 @@ class FlutterwavePaymentController extends Controller
             SendNewOrderReceived::dispatch($order);
 
             if ($order->customer_id) {
-                $order->customer->notify(new SendOrderBill($order));
+                SendOrderBillEvent::dispatch($order);
             }
 
             return redirect()->route('order_success', $payment->order->uuid)->with([

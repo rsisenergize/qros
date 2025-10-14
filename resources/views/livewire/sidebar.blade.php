@@ -156,7 +156,7 @@
                         @endif
 
                         @foreach (custom_module_plugins() as $item)
-                            @includeIf(strtolower($item) . '::sections..sidebar')
+                            @includeIf(strtolower($item) . '::sections.sidebar')
                         @endforeach
 
                         @if($this->hasModule('Settings'))

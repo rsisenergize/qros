@@ -201,6 +201,12 @@
                   role="menuitem">@lang('menu.customerDisplay')</a>
               </li>
 
+              <li>
+                <a href="{{ route('customer.order-board') }}" target="_blank" 
+                  class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-600 dark:hover:text-white"
+                  role="menuitem">@lang('modules.order.customerOrderBoard')</a>
+              </li>
+
               @if (module_enabled('Kiosk') && in_array('Kiosk', restaurant_modules()))
                 <li>
                     <a href="{{ route('kiosk.restaurant', restaurant()->hash). '?branch=' . branch()->unique_hash }}" target="_blank"

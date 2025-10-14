@@ -34,7 +34,7 @@
             @else
                 <a href="javascript:;"
                     wire:click="$dispatch('showAddCustomerModal')"
-                    class="text-sm underline underline-offset-2">&plus; @lang('modules.order.addCustomerDetails')</a>
+                    class="text-sm underline underline-offset-2 dark:text-gray-300">&plus; @lang('modules.order.addCustomerDetails')</a>
             @endif
         </div>
 
@@ -71,7 +71,7 @@
                         </svg>
                         {{ $tableNo }}
 
-                        <x-secondary-button wire:click="$toggle('showTableModal')">
+                        <x-secondary-button wire:click="$toggle('showTableModal'); $dispatch('refreshSetTableComponent')" >
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
                                 class="bi bi-gear" viewBox="0 0 16 16">
                                 <path
@@ -82,7 +82,7 @@
                         </x-secondary-button>
                     @else
                         <x-secondary-button
-                            wire:click="$toggle('showTableModal')">@lang('modules.order.setTable')</x-secondary-button>
+                            wire:click="$toggle('showTableModal'); $dispatch('refreshSetTableComponent')" >@lang('modules.order.setTable')</x-secondary-button>
                     @endif
                 </div>
 

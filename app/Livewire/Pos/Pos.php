@@ -179,6 +179,8 @@ class Pos extends Component
                 }
             } elseif ($this->orderDetail) {
                 return $this->redirect(route('pos.index'), navigate: true);
+            }else{
+                $this->setTable($this->tableOrder);
             }
         }
 
@@ -434,7 +436,41 @@ class Pos extends Component
     #[On('setTable')]
     public function setTable(Table $table)
     {
-        if ($this->tableId) {
+        // Check table lock status first
+        $tableModel = Table::find($table->id);
+        if (!$tableModel->canBeAccessedByUser(user()->id)) {
+            $session = $tableModel->tableSession;
+            $lockedByUser = $session?->lockedByUser;
+
+            $lockedUserName = $lockedByUser?->name ?? 'Admin';
+            $this->alert('error', __('messages.tableLockedByUser', ['user' => $lockedUserName]), [
+                'toast' => true,
+                'position' => 'top-end',
+                'timer' => 5000,
+                'showCancelButton' => false,
+            ]);
+
+            $this->showTableModal = false;
+            return;
+        }
+
+        // Lock the table for current user
+        $lockResult = $tableModel->lockForUser(user()->id);
+
+        if (!$lockResult['success']) {
+            $this->alert('error', __('messages.tableLockFailed'), [
+                'toast' => true,
+                'position' => 'top-end',
+                'timer' => 5000,
+                'showCancelButton' => false,
+            ]);
+
+            $this->showTableModal = false;
+            return;
+        }
+
+        // Release previous table lock if exists
+        if ($this->tableId && $this->tableId !== $table->id) {
             Table::where('id', $this->tableId)->update([
                 'available_status' => 'available'
             ]);
@@ -463,6 +499,14 @@ class Pos extends Component
         }
 
         $this->showTableModal = false;
+
+        // Show success message
+        $this->alert('success', __('messages.tableLocked', ['table' => $table->table_code]), [
+            'toast' => true,
+            'position' => 'top-end',
+            'timer' => 3000,
+            'showCancelButton' => false,
+        ]);
     }
 
     #[On('setPosVariation')]
@@ -483,6 +527,12 @@ class Pos extends Component
 
     public function syncCart($id)
     {
+        // Update table activity when adding items
+        if ($this->tableId) {
+            $table = Table::find($this->tableId);
+            $table?->updateActivity(user()->id);
+        }
+
         if (!isset($this->orderItemList[$id])) {
             $this->orderItemList[$id] = $this->menuItem;
             $this->orderItemQty[$id] = $this->orderItemQty[$id] ?? 1;
@@ -496,6 +546,12 @@ class Pos extends Component
 
     public function deleteCartItems($id)
     {
+        // Update table activity when removing items
+        if ($this->tableId) {
+            $table = Table::find($this->tableId);
+            $table?->updateActivity(user()->id);
+        }
+
         // Remove from session arrays
         unset($this->orderItemList[$id]);
         unset($this->orderItemQty[$id]);
@@ -665,6 +721,12 @@ class Pos extends Component
             return;
         }
 
+        // Update table activity when changing quantities
+        if ($this->tableId) {
+            $table = Table::find($this->tableId);
+            $table?->updateActivity(user()->id);
+        }
+
         $this->orderItemQty[$id] = isset($this->orderItemQty[$id]) ? ($this->orderItemQty[$id] + 1) : 1;
         $basePrice = $this->orderItemVariation[$id]->price ?? $this->orderItemList[$id]->price;
         $this->orderItemAmount[$id] = $this->orderItemQty[$id] * ($basePrice + ($this->orderItemModifiersPrice[$id] ?? 0));
@@ -675,6 +737,12 @@ class Pos extends Component
     {
         if (($this->orderID && !user_can('Update Order')) || (!$this->orderID && !user_can('Create Order'))) {
             return;
+        }
+
+        // Update table activity when changing quantities
+        if ($this->tableId) {
+            $table = Table::find($this->tableId);
+            $table?->updateActivity(user()->id);
         }
 
         $this->orderItemQty[$id] = (isset($this->orderItemQty[$id]) && $this->orderItemQty[$id] > 1) ? ($this->orderItemQty[$id] - 1) : 1;
@@ -688,6 +756,11 @@ class Pos extends Component
         $this->total = 0;
         $this->subTotal = 0;
         $this->totalTaxAmount = 0;
+
+        // If cart is empty and status was billed, reset to idle for new order
+        if (empty($this->orderItemList) && $this->customerDisplayStatus === 'billed') {
+            $this->customerDisplayStatus = 'idle';
+        }
 
         if (is_array($this->orderItemAmount)) {
             // Calculate item taxes first for proper subtotal calculation
@@ -787,11 +860,13 @@ class Pos extends Component
             'qr_code_image_url' => $qrCodeImageUrl,
         ];
 
-        Cache::put('customer_display_cart', $customerDisplayData, now()->addMinutes(30));
+        $userId = auth()->id();
+        $cacheKey = 'customer_display_cart_user_' . $userId;
+        Cache::put($cacheKey, $customerDisplayData, now()->addMinutes(30));
 
         // Broadcast customer display update if Pusher is enabled
         if (pusherSettings()->is_enabled_pusher_broadcast) {
-            broadcast(new \App\Events\CustomerDisplayUpdated($customerDisplayData));
+            broadcast(new \App\Events\CustomerDisplayUpdated($customerDisplayData, $userId));
         }
 
         // Optionally, still dispatch browser event
@@ -915,7 +990,21 @@ class Pos extends Component
 
     public function saveOrder($action, $secondAction = null, $thirdAction = null)
     {
+        // Check if table is locked by another user before saving order
+        if ($this->tableId && $this->orderType === 'dine_in') {
+            $table = Table::find($this->tableId);
+            if ($table && !$table->canBeAccessedByUser(user()->id)) {
+                $session = $table->tableSession;
+                $lockedByUser = $session?->lockedByUser;
+                $lockedUserName = $lockedByUser?->name ?? 'Another user';
 
+                $this->alert('error', __('messages.tableHandledByUser', ['user' => $lockedUserName, 'table' => $table->table_code]), [
+                    'toast' => true,
+                    'position' => 'top-end',
+                ]);
+                return;
+            }
+        }
 
         $this->showErrorModal = true;
 
@@ -1086,6 +1175,8 @@ class Pos extends Component
                     $kot = Kot::create([
                         'kot_number' => Kot::generateKotNumber($order->branch),
                         'order_id' => $order->id,
+                        'order_type_id' => $order->order_type_id,
+                        'token_number' => Kot::generateTokenNumber(branch()->id, $order->order_type_id),
                         'kitchen_place_id' => $kotPlaceId,
                         'note' => $this->orderNote,
                     ]);
@@ -1111,6 +1202,8 @@ class Pos extends Component
                 $kot = Kot::create([
                     'kot_number' => Kot::generateKotNumber($order->branch) + 1,
                     'order_id' => $order->id,
+                    'order_type_id' => $order->order_type_id,
+                    'token_number' => Kot::generateTokenNumber(branch()->id, $order->order_type_id),
                     'note' => $this->orderNote
                 ]);
 
@@ -1331,6 +1424,7 @@ class Pos extends Component
             $this->setCustomerDisplayStatus('billed');
         }
 
+
         Table::where('id', $this->tableId)->update([
             'available_status' => $tableStatus
         ]);
@@ -1412,6 +1506,9 @@ class Pos extends Component
             if (!in_array($secondAction, ['payment', 'print'])) {
                 $this->dispatch('showOrderDetail', id: $order->id, fromPos: true);
             }
+
+            $this->dispatch('resetPos');
+            $this->dispatch('refreshPos');
         }
 
         // Handle default case outside the switch block
@@ -1587,14 +1684,18 @@ class Pos extends Component
         $this->itemNotes = []; // Reset item notes
         $this->orderItemTaxDetails = [];
         $this->totalTaxAmount = 0;
+        $this->customerDisplayStatus = 'idle'; // Reset customer display status to idle
         // Save empty cart state to cache for customer display
-        $taxesForDisplay = $this->taxes->map(function ($tax) {
-            return [
-                'name' => $tax->tax_name,
-                'percent' => $tax->tax_percent,
-                'amount' => 0,
-            ];
-        })->toArray();
+        $taxesForDisplay = [];
+        if ($this->taxes) {
+            $taxesForDisplay = $this->taxes->map(function ($tax) {
+                return [
+                    'name' => $tax->tax_name,
+                    'percent' => $tax->tax_percent,
+                    'amount' => 0,
+                ];
+            })->toArray();
+        }
         $customerDisplayData = [
             'order_number' => $this->orderNumber,
             'formatted_order_number' => $this->formattedOrderNumber,
@@ -1607,15 +1708,17 @@ class Pos extends Component
             'tip' => 0,
             'delivery_fee' => 0,
             'order_type' => $this->orderType,
-            'status' => $this->customerDisplayStatus ?? 'idle',
+            'status' => 'idle',
             'cash_due' => null,
         ];
 
-        Cache::put('customer_display_cart', $customerDisplayData, now()->addMinutes(30));
+        // $userId = auth()->id();
+        // $cacheKey = 'customer_display_cart_user_' . $userId;
+        // Cache::put($cacheKey, $customerDisplayData, now()->addMinutes(30));
 
         // Broadcast customer display update if Pusher is enabled
         if (pusherSettings()->is_enabled_pusher_broadcast) {
-            broadcast(new \App\Events\CustomerDisplayUpdated($customerDisplayData));
+            broadcast(new \App\Events\CustomerDisplayUpdated($customerDisplayData, $userId));
         }
         // Optionally, still dispatch browser event
         $this->dispatch('orderUpdated', [

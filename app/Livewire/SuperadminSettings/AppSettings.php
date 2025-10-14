@@ -22,6 +22,8 @@ class AppSettings extends Component
     public $globalCurrencies;
     public $defaultCurrency;
     public $mapApiKey;
+    public $privacyPolicyLink;
+    public bool $showPrivacyConsentCheckbox;
     public bool $requiresApproval;
     public $sessionDriver;
     public $phoneNumber;
@@ -42,6 +44,8 @@ class AppSettings extends Component
         $this->globalCurrencies = GlobalCurrency::where('status', 'enable')->get();
         $this->defaultCurrency = $this->settings->default_currency_id;
         $this->mapApiKey = $this->settings->google_map_api_key;
+        $this->privacyPolicyLink = $this->settings->privacy_policy_link;
+        $this->showPrivacyConsentCheckbox = $this->settings->show_privacy_consent_checkbox ?? false;
         $this->sessionDriver = $this->settings->session_driver;
         // Phone code/number
         $this->phoneNumber = user()->phone_number ?? '';
@@ -77,9 +81,17 @@ class AppSettings extends Component
         $this->updatedPhoneCodeSearch();
     }
 
+    public function updatedShowPrivacyConsentCheckbox($value)
+    {
+        // Clear privacy policy link when checkbox is unchecked
+        if (!$value) {
+            $this->privacyPolicyLink = null;
+        }
+    }
+
     public function submitForm()
     {
-        $this->validate([
+        $validationRules = [
             'appName' => 'required',
             'phoneNumber' => [
                 'required',
@@ -87,13 +99,22 @@ class AppSettings extends Component
             ],
             'phoneCode' => 'required',
             'timezone' => 'required',
-        ]);
+        ];
+
+        // Add privacy policy link validation if consent checkbox is enabled
+        if ($this->showPrivacyConsentCheckbox) {
+            $validationRules['privacyPolicyLink'] = 'required|url';
+        }
+
+        $this->validate($validationRules);
 
         $this->settings->name = $this->appName;
         $this->settings->requires_approval_after_signup = $this->requiresApproval;
         $this->settings->locale = $this->defaultLanguage;
         $this->settings->default_currency_id = $this->defaultCurrency;
         $this->settings->google_map_api_key = $this->mapApiKey ?? null;
+        $this->settings->privacy_policy_link = $this->privacyPolicyLink ?? null;
+        $this->settings->show_privacy_consent_checkbox = $this->showPrivacyConsentCheckbox;
         $this->settings->session_driver = $this->sessionDriver ?? null;
         $this->settings->timezone = $this->timezone;
         // Save phone_number and phone_code to the User table for the current user

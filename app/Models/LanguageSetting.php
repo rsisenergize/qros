@@ -82,7 +82,7 @@ class LanguageSetting extends BaseModel
             'is_rtl' => 0,
         ],
         [
-            'language_code' => 'gr',
+            'language_code' => 'el',
             'flag_code' => 'gr',
             'language_name' => 'Greek',
             'active' => 0,

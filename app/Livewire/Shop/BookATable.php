@@ -3,10 +3,10 @@
 namespace App\Livewire\Shop;
 
 use App\Events\ReservationReceived;
+use App\Events\ReservationConfirmationSent;
 use App\Models\Branch;
 use App\Models\Reservation;
 use App\Models\ReservationSetting;
-use App\Notifications\ReservationConfirmation;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
 use Illuminate\Support\Facades\Log;
@@ -300,11 +300,8 @@ class BookATable extends Component
             'special_requests' => $this->specialRequest
         ]);
 
-        try {
-            customer()->notify(new ReservationConfirmation($reservation));
-        } catch (\Exception $e) {
-            Log::error('Error sending reservation confirmation email: ' . $e->getMessage());
-        }
+        // Dispatch event for reservation confirmation notification
+        ReservationConfirmationSent::dispatch($reservation);
 
         ReservationReceived::dispatch($reservation);
 

@@ -1,4 +1,4 @@
-<div class="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-0 " @if(!pusherSettings()->is_enabled_pusher_broadcast) wire:poll.1000ms @endif>
+<div class="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-0 " @if(!pusherSettings()->is_enabled_pusher_broadcast) wire:poll.500ms @endif>
 
     @if($status == 'billed')
         <div class="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-0 sm:p-8">
@@ -155,16 +155,18 @@
 
             <script>
                 document.addEventListener('DOMContentLoaded', function () {
-                    const channel = PUSHER.subscribe('customer-display');
+                    const userId = {{ auth()->id() }};
+                    const channelName = 'customer-display-user-' + userId;
+                    const channel = PUSHER.subscribe(channelName);
                     channel.bind('customer-display.updated', function(data) {
                         @this.call('refreshCustomerDisplay');
-                        console.log('✅ Pusher received data for customer display!. Refreshing...');
+                        console.log('✅ Pusher received data for customer display user ' + userId + '!. Refreshing...');
                     });
                     PUSHER.connection.bind('connected', () => {
                         console.log('✅ Pusher connected for Customer Display!');
                     });
                     channel.bind('pusher:subscription_succeeded', () => {
-                        console.log('✅ Subscribed to customer-display channel!');
+                        console.log('✅ Subscribed to ' + channelName + ' channel!');
                     });
                 });
             </script>

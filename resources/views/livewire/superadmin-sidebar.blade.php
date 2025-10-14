@@ -27,6 +27,10 @@
 
                         @livewire('sidebar-menu-item', ['name' => __('menu.landingSites'), 'icon' => 'landing', 'link' => route('superadmin.landing-sites.index'), 'active' => request()->routeIs('superadmin.landing-sites.*')])
 
+                        @foreach (custom_module_plugins() as $item)
+                            @includeIf(strtolower($item) . '::sections.superadmin-sidebar')
+                        @endforeach
+
                         @livewire('sidebar-menu-item', ['name' => __('menu.settings'), 'icon' => 'settings', 'link' => route('superadmin.superadmin-settings.index'), 'active' => request()->routeIs('superadmin.superadmin-settings.index')])
 
                     </ul>

@@ -11,6 +11,7 @@
     </div>
 
     <div class="overflow-hidden rounded-lg bg-gray-50 dark:bg-gray-800">
+   
         <!-- Order Status Header -->
         <div class="px-4 py-3 border-gray-200 bg-gray-50 dark:bg-gray-700 dark:border-gray-600">
             @if ($order->order_status->value === 'cancelled')

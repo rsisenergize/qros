@@ -244,6 +244,14 @@
                         </span>
                     <span class="space_left">{{ $order->date_time->timezone(timezone())->translatedFormat('d M Y h:i A') }}</span>
                 </div>
+                @php
+                    $tokenNumber = $order->kot->whereNotNull('token_number')->first()?->token_number;
+                @endphp
+                @if ($tokenNumber)
+                    <div class="summary-row">
+                        <span>@lang('modules.order.tokenNumber') {{ $tokenNumber }}</span>
+                    </div>
+                @endif
                 @if($receiptSettings->show_table_number || $receiptSettings->show_total_guest)
                 <div class="summary-row" style="display: flex; justify-content: space-between;">
                     @if ($receiptSettings->show_table_number && $order->table && $order->table->table_code)

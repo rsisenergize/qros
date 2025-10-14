@@ -138,7 +138,7 @@ class SalesReport extends Component
         // Get sales report with charges grouped
         $query = Order::join('payments', 'orders.id', '=', 'payments.order_id')
             ->whereBetween('orders.date_time', [$dateTimeData['startDateTime'], $dateTimeData['endDateTime']])
-            ->where('orders.status', 'paid')
+            ->whereIn('orders.status', ['paid', 'payment_due'])
             ->where(function ($q) use ($dateTimeData) {
                 if ($dateTimeData['startTime'] < $dateTimeData['endTime']) {
                     $q->whereRaw('TIME(orders.date_time) BETWEEN ? AND ?', [$dateTimeData['startTime'], $dateTimeData['endTime']]);
@@ -152,9 +152,26 @@ class SalesReport extends Component
                 }
             });
 
+        // Get outstanding payments data separately
+        $outstandingQuery = Order::whereBetween('date_time', [$dateTimeData['startDateTime'], $dateTimeData['endDateTime']])
+            ->where('status', 'payment_due')
+            ->where(function ($q) use ($dateTimeData) {
+                if ($dateTimeData['startTime'] < $dateTimeData['endTime']) {
+                    $q->whereRaw('TIME(date_time) BETWEEN ? AND ?', [$dateTimeData['startTime'], $dateTimeData['endTime']]);
+                }
+                else
+                 {
+                    $q->where(function ($sub) use ($dateTimeData) {
+                        $sub->whereRaw('TIME(date_time) >= ?', [$dateTimeData['startTime']])
+                            ->orWhereRaw('TIME(date_time) <= ?', [$dateTimeData['endTime']]);
+                    });
+                }
+            });
+
         // Filter by waiter if selected
         if ($this->filterByWaiter) {
             $query->where('orders.waiter_id', $this->filterByWaiter);
+            $outstandingQuery->where('waiter_id', $this->filterByWaiter);
         }
 
         $query = $query->select(
@@ -173,9 +190,20 @@ class SalesReport extends Component
         ->orderBy('date')
         ->get();
 
+        // Get outstanding payments data
+        $outstandingData = $outstandingQuery->select(
+            DB::raw('DATE(CONVERT_TZ(date_time, "+00:00", "' . $dateTimeData['offset'] . '")) as date'),
+            DB::raw('COUNT(*) as outstanding_orders'),
+            DB::raw('SUM(total) as outstanding_amount')
+        )
+        ->groupBy('date')
+        ->orderBy('date')
+        ->get()
+        ->keyBy('date');
+
         // Get order-level data separately to avoid duplication
         $orderData = Order::whereBetween('date_time', [$dateTimeData['startDateTime'], $dateTimeData['endDateTime']])
-            ->where('status', 'paid')
+            ->whereIn('status', ['paid', 'payment_due'])
             ->where(function ($q) use ($dateTimeData) {
                 if ($dateTimeData['startTime'] < $dateTimeData['endTime']) {
                     $q->whereRaw('TIME(date_time) BETWEEN ? AND ?', [$dateTimeData['startTime'], $dateTimeData['endTime']]);
@@ -205,16 +233,17 @@ class SalesReport extends Component
         ->keyBy('date');
 
         // Process taxes and charges dynamically using actual tax breakdown data
-        $groupedData = $query->map(function ($item) use ($charges, $taxes, $taxMode, $orderData) {
+        $groupedData = $query->map(function ($item) use ($charges, $taxes, $taxMode, $orderData, $outstandingData) {
             // Get order-level data for this date
             $orderInfo = $orderData->get($item->date);
+            $outstandingInfo = $outstandingData->get($item->date);
             $chargeAmounts = [];
             foreach ($charges as $charge) {
                 $chargeAmounts[$charge->charge_name] = DB::table('order_charges')
                     ->join('orders', 'order_charges.order_id', '=', 'orders.id')
                     ->join('restaurant_charges', 'order_charges.charge_id', '=', 'restaurant_charges.id')
                     ->where('order_charges.charge_id', $charge->id)
-                    ->where('orders.status', 'paid')
+                    ->where('orders.status', 'paid', 'payment_due')
                     ->whereDate('orders.date_time', $item->date)
                     ->where('orders.branch_id', branch()->id)
                     ->sum(DB::raw('CASE WHEN restaurant_charges.charge_type = "percent"
@@ -358,6 +387,8 @@ class SalesReport extends Component
                 'razorpay_amount' => $item->razorpay_amount ?? 0,
                 'stripe_amount' => $item->stripe_amount ?? 0,
                 'flutterwave_amount' => $item->flutterwave_amount ?? 0,
+                'outstanding_orders' => $outstandingInfo->outstanding_orders ?? 0,
+                'outstanding_amount' => $outstandingInfo->outstanding_amount ?? 0,
                 'charges' => $chargeAmounts,
                 'taxes' => $taxAmounts,
                 'tax_details' => $taxDetails,

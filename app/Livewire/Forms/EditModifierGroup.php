@@ -255,35 +255,76 @@ class EditModifierGroup extends Component
             'description' => $this->translationDescriptions[$this->globalLocale],
         ]);
 
-        // Update translations
-        $modifierGroup->translations()->delete();
-        $translations = collect($this->translationNames)
+        // Update translations (sync instead of delete + create)
+        $existingTranslations = $modifierGroup->translations()->pluck('locale')->toArray();
+        $newTranslations = collect($this->translationNames)
             ->filter(fn($name, $locale) => !empty($name) || !empty($this->translationDescriptions[$locale]))
             ->map(fn($name, $locale) => [
                 'locale' => $locale,
                 'name' => $name,
                 'description' => $this->translationDescriptions[$locale]
-            ])->values()->all();
+            ]);
 
-        $modifierGroup->translations()->createMany($translations);
+        // Update existing translations and create new ones
+        foreach ($newTranslations as $translation) {
+            $modifierGroup->translations()->updateOrCreate(
+                ['locale' => $translation['locale']],
+                [
+                    'name' => $translation['name'],
+                    'description' => $translation['description']
+                ]
+            );
+        }
 
-        // Update modifier options using Spatie translatable
-        $modifierGroup->options()->delete();
-        $options = collect($this->modifierOptions)->map(function($option) {
-            return [
+        // Delete translations that are no longer needed
+        $newLocales = $newTranslations->pluck('locale')->toArray();
+        $modifierGroup->translations()->whereNotIn('locale', $newLocales)->delete();
+
+        // Update modifier options (UPDATE existing, CREATE new, DELETE removed)
+        $existingOptionIds = $modifierGroup->options()->pluck('id')->toArray();
+        $submittedOptionIds = collect($this->modifierOptions)
+            ->filter(fn($option) => is_numeric($option['id']))
+            ->pluck('id')
+            ->toArray();
+
+        // Delete removed options (only those not in submitted list)
+        $optionsToDelete = array_diff($existingOptionIds, $submittedOptionIds);
+        if (!empty($optionsToDelete)) {
+            ModifierOption::whereIn('id', $optionsToDelete)->delete();
+        }
+
+        // Update existing or create new options
+        foreach ($this->modifierOptions as $option) {
+            $optionData = [
                 'name' => $option['name'], // Spatie will cast this as array
                 'price' => $option['price'],
                 'is_available' => $option['is_available'],
                 'sort_order' => $option['sort_order'],
             ];
-        })->all();
 
-        $modifierGroup->options()->createMany($options);
+            if (is_numeric($option['id']) && in_array($option['id'], $existingOptionIds)) {
+                // Update existing option
+                ModifierOption::where('id', $option['id'])->update($optionData);
+            } else {
+                // Create new option
+                $modifierGroup->options()->create($optionData);
+            }
+        }
 
-        // Update menu item associations
-        $modifierGroup->itemModifiers()->delete();
-        if (!empty($this->selectedMenuItems)) {
-            $itemModifiers = collect($this->selectedMenuItems)->map(function($menuItemId) use ($modifierGroup) {
+        // Update menu item associations (sync instead of delete + create)
+        $existingMenuItems = $modifierGroup->itemModifiers()->pluck('menu_item_id')->toArray();
+        $newMenuItems = $this->selectedMenuItems;
+
+        // Delete removed associations
+        $itemsToRemove = array_diff($existingMenuItems, $newMenuItems);
+        if (!empty($itemsToRemove)) {
+            $modifierGroup->itemModifiers()->whereIn('menu_item_id', $itemsToRemove)->delete();
+        }
+
+        // Add new associations
+        $itemsToAdd = array_diff($newMenuItems, $existingMenuItems);
+        if (!empty($itemsToAdd)) {
+            $itemModifiers = collect($itemsToAdd)->map(function($menuItemId) use ($modifierGroup) {
                 return [
                     'menu_item_id' => $menuItemId,
                     'modifier_group_id' => $modifierGroup->id,

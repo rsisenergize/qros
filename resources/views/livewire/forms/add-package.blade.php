@@ -162,6 +162,13 @@
                                 <x-input id="price" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white sm:text-sm" type="number" min="0" wire:model="price" />
                                 <x-input-error for="price" class="mt-2" />
                             </div>
+                            @if($paymentKey->paddle_status == 1)
+                                <div class="mt-6">
+                                    <x-label for="paddleLifetimePriceId" value="Paddle Lifetime Price ID" required="true" class="text-sm font-medium text-gray-700 dark:text-gray-300"/>
+                                    <x-input id="paddleLifetimePriceId" type="text" wire:model="paddleLifetimePriceId" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white sm:text-sm"/>
+                                    <x-input-error for="paddleLifetimePriceId" class="mt-2"/>
+                                </div>
+                            @endif
                         @else
                             <div class="mt-6 grid grid-cols-2 gap-6">
                                 <div>
@@ -215,6 +222,13 @@
                                                     <x-input-error for="paystackMonthlyPlanId" class="mt-2"/>
                                                 </div>
                                             @endif
+                                            @if($paymentKey->paddle_status == 1)
+                                                <div>
+                                                    <x-label for="paddleMonthlyPriceId" value="Paddle Monthly Price ID" required="true"/>
+                                                    <x-input id="paddleMonthlyPriceId" type="text" wire:model="paddleMonthlyPriceId" class="mt-1 block w-full"/>
+                                                    <x-input-error for="paddleMonthlyPriceId" class="mt-2"/>
+                                                </div>
+                                            @endif
                                         </div>
                                     @endif
 
@@ -253,6 +267,13 @@
                                                     <x-input-error for="paystackAnnualPlanId" class="mt-2"/>
                                                 </div>
                                             @endif
+                                            @if($paymentKey->paddle_status == 1)
+                                                <div>
+                                                    <x-label for="paddleAnnualPriceId" value="Paddle Annual Price ID" required="true"/>
+                                                    <x-input id="paddleAnnualPriceId" type="text" wire:model="paddleAnnualPriceId" class="mt-1 block w-full"/>
+                                                    <x-input-error for="paddleAnnualPriceId" class="mt-2"/>
+                                                </div>
+                                            @endif
                                         </div>
                                     @endif
                                 </div>
@@ -276,7 +297,7 @@
                                     <div class="flex items-center">
                                         <x-checkbox
                                             id="module_{{ $module->id }}"
-                                            wire:model="selectedModules"
+                                            wire:model.live="selectedModules"
                                             value="{{ $module->id }}"
                                         />
                                         <span class="ml-3 text-sm font-medium text-gray-900 dark:text-gray-300">{{ __('permissions.modules.'.$module->name) }}</span>
@@ -326,6 +347,45 @@
                                 <x-label for="branch_limit" value="{{ __('modules.package.branchLimit') }}" class="text-sm font-medium text-gray-700 dark:text-gray-300"/>
                                 <x-input id="branch_limit" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white sm:text-sm" type="number" wire:model.live='branchLimit' />
                                 <x-input-error for="branchLimit" class="mt-2" />
+                            </div>
+                        </div>
+                    @endif
+
+                    @if($this->isSmsModuleSelected() && module_enabled('Sms'))
+                        <div class="mt-6">
+                            <div class="rounded-md bg-yellow-50 p-4">
+                                <div class="flex">
+                                    <div class="flex-shrink-0">
+                                        <svg class="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                                            <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                                        </svg>
+                                    </div>
+                                    <div class="ml-3">
+                                        <p class="text-sm text-yellow-700">
+                                            @lang('sms::modules.package.smsCountInfo')
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- SMS Count and Carry Forward SMS in same line -->
+                            <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <x-label for="smsCount" value="{{ __('sms::modules.package.smsCount') }}" required="true" class="text-sm font-medium text-gray-700 dark:text-gray-300"/>
+                                    <x-input id="smsCount" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white sm:text-sm" type="number" min="-1" wire:model.live='smsCount' />
+                                    <x-input-error for="smsCount" class="mt-2" />
+                                </div>
+                                
+                                <div class="flex items-center mt-3">
+                                    <x-label for="carryForwardSms">
+                                        <div class="flex items-center cursor-pointer">
+                                            <x-checkbox id="carryForwardSms" wire:model="carryForwardSms" />
+                                            <div class="select-none ms-2">
+                                                {{ __('sms::modules.package.carryForwardSms') }}
+                                            </div>
+                                        </div>
+                                    </x-label>
+                                </div>
                             </div>
                         </div>
                     @endif

@@ -12,7 +12,7 @@ use App\Models\{
 };
 
 use App\Events\SendNewOrderReceived;
-use App\Notifications\SendOrderBill;
+use App\Events\SendOrderBillEvent;
 
 
 class PayfastPaymentController extends Controller
@@ -138,7 +138,7 @@ class PayfastPaymentController extends Controller
             SendNewOrderReceived::dispatch($order);
 
             if ($order->customer_id) {
-                $order->customer->notify(new SendOrderBill($order));
+                SendOrderBillEvent::dispatch($order);
             }
     }
 }

@@ -51,6 +51,8 @@ class User extends Authenticatable
         'locale',
         'phone_number',
         'phone_code',
+        'terms_and_privacy_accepted',
+        'marketing_emails_accepted',
     ];
 
     /**
@@ -86,6 +88,8 @@ class User extends Authenticatable
             'password' => 'hashed',
             'restaurant_id' => 'integer',
             'branch_id' => 'integer',
+            'terms_and_privacy_accepted' => 'boolean',
+            'marketing_emails_accepted' => 'boolean',
         ];
     }
 
@@ -230,6 +234,24 @@ class User extends Authenticatable
         }
     }
 
+    public function routeNotificationForVonage($notification)
+    {
+        if (!is_null($this->phone_number) && !is_null($this->phone_code)) {
+            return '+' . $this->phone_code . $this->phone_number;
+        }
+
+        return null;
+    }
+
+    public function routeNotificationForMsg91($notification)
+    {
+        if (!is_null($this->phone_number) && !is_null($this->phone_code)) {
+            return $this->phone_code . $this->phone_number;
+        }
+
+        return null;
+
+    }        
     /**
      * Send the password reset notification.
      *

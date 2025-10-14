@@ -31,12 +31,6 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // Add CORS middleware globally to handle all CORS requests
         $middleware->append(\Illuminate\Http\Middleware\HandleCors::class);
-
-        // $middleware->alias([
-        //     'xss' => \Froiden\Envato\Middleware\XSS::class,
-        // ]);
-
-        // $middleware->append(\Froiden\Envato\Middleware\XSS::class);
     })
 
     ->withExceptions(function (Exceptions $exceptions) {

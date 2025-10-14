@@ -30,6 +30,27 @@ class RestaurantObserver
         if ($restaurant->isDirty(['package_id', 'package_type', 'license_expire_on'])) {
             clearRestaurantModulesCache($restaurant->id);
         }
+
+        if ($restaurant->isDirty('package_id')) {
+            if (in_array('Sms', restaurant_modules())) {
+        
+                $oldPackageId = $restaurant->getOriginal('package_id');
+                $oldPackage   = Package::find($oldPackageId);
+                $newPackage   = Package::find($restaurant->package_id);
+        
+                $totalSms = $newPackage?->sms_count ?? 0;
+        
+                if ($oldPackage && $newPackage && $oldPackage->sms_count != -1 && $newPackage->sms_count != -1 && $newPackage->carry_forward_sms) {
+                    $remaining = max(0, ($restaurant->getOriginal('total_sms') ?? 0) - ($restaurant->getOriginal('count_sms') ?? 0));
+        
+                    $totalSms = $remaining + $newPackage->sms_count;
+                }
+        
+                $restaurant->total_sms = $totalSms;
+        
+                $restaurant->count_sms = 0;
+            }
+        }
     }
 
     public function created(Restaurant $restaurant)
@@ -187,6 +208,12 @@ class RestaurantObserver
             $slug = str()->slug($name, '-', auth()->user()->locale);
         } else {
             $slug = str()->slug($name, '-');
+        }
+
+         // Fallback if slug is empty or contains only hyphens (happens with non-Latin scripts)
+         if (empty($slug) || trim($slug, '-') === '') {
+            // Use transliteration or fallback to a unique identifier
+            $slug = uniqid();
         }
 
         // Check if slug already exists in the database

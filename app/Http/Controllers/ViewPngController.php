@@ -53,6 +53,21 @@ class ViewPngController extends Controller
         return $this->storeImage($data, 'order', $data['order_id']);
     }
 
+    // Save Cash Register report image (X/Z reports)
+    public function storeReport(Request $request)
+    {
+        $data = $request->validate([
+            'image_base64' => 'required|string',   // data:image/png;base64,
+            'session_id'   => 'required|integer',  // Cash register session ID
+            'report_type'  => 'required|string',   // x-report | z-report
+            'width'        => 'nullable|integer',  // final width (px)
+            'mono'         => 'nullable|boolean',  // pure B/W for thermal
+        ]);
+
+        $type = strtolower($data['report_type']) === 'z-report' ? 'z-report' : 'x-report';
+        return $this->storeImage($data, $type, $data['session_id']);
+    }
+
     /**
      * Common method to store images (KOT or Order)
      *
@@ -147,6 +162,10 @@ class ViewPngController extends Controller
 
         Files::createDirectoryIfNotExist($dir);
 
+        // Ensure parent 'print' dir exists under public/user-uploads
+        // and create it if missing
+        // createDirectoryIfNotExist handles nested dir creation
+
 
         // Generate filename
         $name = $type . '-' . $id . '.png';
@@ -156,7 +175,9 @@ class ViewPngController extends Controller
         // Use encode('png') instead of toPng() for GD driver compatibility
         $pngData = $img->encode('png')->getEncoded();
 
-        Storage::disk('local')->put($path, $pngData);
+        // Save under public/user-uploads/{dir}/{name}
+        $fullPath = public_path(Files::UPLOAD_FOLDER . '/' . $path);
+        \Illuminate\Support\Facades\File::put($fullPath, $pngData);
 
         return $path;
     }

@@ -1,4 +1,4 @@
-@props(['id', 'maxWidth'])
+@props(['id', 'maxWidth', 'maxHeight'])
 
 @php
 $id = $id ?? md5($attributes->wire('model'));
@@ -12,6 +12,21 @@ $maxWidth = [
     '3xl' => 'sm:max-w-3xl',
     '4xl' => 'sm:max-w-4xl',
 ][$maxWidth ?? '2xl'];
+
+$maxHeight = [
+    'sm' => 'sm:max-h-sm',
+    'md' => 'sm:max-h-md',
+    'lg' => 'sm:max-h-lg',
+    'xl' => 'sm:max-h-xl',
+    '2xl' => 'sm:max-h-2xl',
+    '3xl' => 'sm:max-h-3xl',
+    '4xl' => 'sm:max-h-4xl',
+    '5xl' => 'sm:max-h-5xl',
+    '6xl' => 'sm:max-h-6xl',
+    'full' => 'sm:max-h-full',
+][$maxHeight ?? '2xl'];
+
+
 @endphp
 
 <div
@@ -32,7 +47,7 @@ $maxWidth = [
         <div class="absolute inset-0 bg-gray-500 dark:bg-gray-900 opacity-75"></div>
     </div>
 
-    <div x-show="show" class="mb-6 bg-white dark:bg-gray-800 rounded-lg overflow-hidden shadow-xl transform transition-all sm:w-full {{ $maxWidth }} sm:mx-auto"
+    <div x-show="show" class="mb-6 bg-white dark:bg-gray-800 rounded-lg overflow-hidden shadow-xl transform transition-all sm:w-full {{ $maxWidth }} {{ $maxHeight }} sm:mx-auto overflow-y-auto"
                     x-trap.inert.noscroll="show"
                     x-transition:enter="ease-out duration-300"
                     x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"

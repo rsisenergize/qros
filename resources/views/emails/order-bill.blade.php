@@ -66,7 +66,7 @@
 | **{{ __('modules.order.total') }}**      |               | **{{ currency_format($totalPrice, $settings->currency_id) }}** |
 @endcomponent
 
-**{{ __('app.date') }}**: {{ $order->date_time->translatedFormat('F j, Y, g:i a') }}
+**{{ __('app.date') }}**: {{ $order->date_time->timezone($settings->timezone)->translatedFormat('F j, Y, g:i a') }}
 
 {{ __('email.sendOrderBill.satisfactionMessage') }}
 

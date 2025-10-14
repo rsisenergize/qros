@@ -83,6 +83,8 @@ class PlanList extends Component
             $this->stripeSettings->payfast_status,
             $this->stripeSettings->authorize_status,
             $this->stripeSettings->flutterwave_status,
+            $this->stripeSettings->xendit_status,
+            $this->stripeSettings->paddle_status,
         ])) {
             $this->paymentGatewayActive = true;
         }
@@ -157,6 +159,9 @@ class PlanList extends Component
             'paypal' => $this->stripeSettings->paypal_status,
             'payfast' => $this->stripeSettings->payfast_status,
             'paystack' => $this->stripeSettings->paystack_status,
+            'xendit' => $this->stripeSettings->xendit_status,
+            'paddle' => $this->stripeSettings->paddle_status,
+
 
         ])->filter();
 
@@ -174,6 +179,8 @@ class PlanList extends Component
             'paypal' => $this->initiatePaypalPayment(),
             'payfast' => $this->initiatePayfastPayment(),
             'paystack' => $this->initiatePaystackPayment(),
+            'xendit' => $this->initiateXenditPayment(),
+            'paddle' => $this->initiatePaddlePayment(),
             default => $this->showPaymentMethodModal = true,
         };
     }
@@ -557,6 +564,98 @@ class PlanList extends Component
         $this->dispatch('stripePlanPaymentInitiated', payment: $payment);
     }
 
+    public function initiateXenditPayment()
+    {
+        // Xendit payment initiation logic
+        $plan = Package::find($this->selectedPlan->id);
+        $type = $plan->package_type === PackageType::LIFETIME ? 'lifetime' : ($this->isAnnual ? 'annual' : 'monthly');
+        $currency_id = $plan->currency_id;
+        if ($plan->package_type == PackageType::LIFETIME) {
+            $amount = $plan->price;
+        } else {
+            $amount = $this->isAnnual ? $this->selectedPlan->annual_price : $this->selectedPlan->monthly_price;
+        }
+
+        if (!$amount) {
+            $this->alert('error', __('messages.noPlanIdFound'), [
+                'toast' => true,
+                'position' => 'top-end',
+                'showCancelButton' => false,
+                'cancelButtonText' => __('app.close')
+            ]);
+            return;
+        }
+
+        $payment = RestaurantPayment::create([
+            'restaurant_id' => $this->restaurant->id,
+            'amount' => $amount,
+            'package_id' => $plan->id,
+            'package_type' => $type,
+            'currency_id' => $currency_id,
+            'recurrence_interval' => 'MONTH',
+            'recurrence_interval_count' => 1,
+        ]);
+
+
+        $params = [
+            'email' => $this->restaurant->email,
+            'payment_id' => $payment->id,
+            'amount' => $amount,
+            'currency' => $plan->currency->currency_code,
+            'restaurant_id' => $this->restaurant->id,
+            'package_id' => $plan->id,
+            'package_type' => $type,
+            'email' => $this->restaurant->email
+        ];
+
+        // Trigger frontend to redirect to Xendit
+        $this->dispatch('redirectToXendit', ['params' => $params]);
+    }
+
+    public function initiatePaddlePayment()
+    {
+        // Paddle payment initiation logic
+        $plan = Package::find($this->selectedPlan->id);
+        $type = $plan->package_type === PackageType::LIFETIME ? 'lifetime' : ($this->isAnnual ? 'annual' : 'monthly');
+        $currency_id = $plan->currency_id;
+
+        if ($plan->package_type == PackageType::LIFETIME) {
+            $amount = $plan->price;
+        } else {
+            $amount = $this->isAnnual ? $this->selectedPlan->annual_price : $this->selectedPlan->monthly_price;
+        }
+
+        if (!$amount) {
+            $this->alert('error', __('messages.noPlanIdFound'), [
+                'toast' => true,
+                'position' => 'top-end',
+                'showCancelButton' => false,
+                'cancelButtonText' => __('app.close')
+            ]);
+            return;
+        }
+
+        $payment = RestaurantPayment::create([
+            'restaurant_id' => $this->restaurant->id,
+            'amount' => $amount,
+            'package_id' => $plan->id,
+            'package_type' => $type,
+            'currency_id' => $currency_id,
+        ]);
+
+        $params = [
+            'email' => $this->restaurant->email,
+            'payment_id' => $payment->id,
+            'amount' => $amount,
+            'currency' => $plan->currency->currency_code,
+            'restaurant_id' => $this->restaurant->id,
+            'package_id' => $plan->id,
+            'package_type' => $type,
+        ];
+
+        // Trigger frontend to redirect to Paddle
+        $this->dispatch('redirectToPaddle', ['params' => $params]);
+    }
 
     public function freePlan()
     {
@@ -645,6 +744,7 @@ class PlanList extends Component
         ]);
 
         $params = [
+            'email' => $this->restaurant->email,
             'payment_id' => $payment->id,
             'amount' => $amount,
             'currency' => $plan->currency->currency_code,
@@ -692,6 +792,7 @@ class PlanList extends Component
         ]);
 
         $params = [
+            'email' => $this->restaurant->email,
             'payment_id' => $payment->id,
             'amount' => $amount,
             'currency' => $plan->currency->currency_code,
@@ -729,6 +830,7 @@ class PlanList extends Component
         ]);
 
         $params = [
+            'email' => $this->restaurant->email,
             'payment_id' => $payment->id,
             'amount' => $amount,
             'currency' => $plan->currency->currency_code,
@@ -766,6 +868,7 @@ class PlanList extends Component
         ]);
 
         $params = [
+            'email' => $this->restaurant->email,
             'payment_id' => $payment->id,
             'amount' => $amount,
             'currency' => $plan->currency->currency_code,

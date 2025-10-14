@@ -65,6 +65,32 @@ class SuperadminPaymentSettings extends Component
     public $testPaystackMerchantEmail;
     public $selectPaystackEnvironment;
 
+    // Xendit properties (superadmin)
+    public $xenditStatus;
+    public $xenditMode; // sandbox|live
+    public $testXenditPublicKey;
+    public $testXenditSecretKey;
+    public $liveXenditPublicKey;
+    public $liveXenditSecretKey;
+    public $testXenditWebhookToken;
+    public $liveXenditWebhookToken;
+    public $selectXenditEnvironment;
+    public $isXenditEnabled;
+
+    // Paddle properties
+    public $paddleStatus;
+    public $paddleMode;
+    public $testPaddleVendorId;
+    public $testPaddleApiKey;
+    public $testPaddlePublicKey;
+    public $testPaddleClientToken;
+    public $livePaddleVendorId;
+    public $livePaddleApiKey;
+    public $livePaddlePublicKey;
+    public $livePaddleClientToken;
+    public $paddleWebhookSecret;
+    public $isPaddleEnabled;
+
 
     public function mount()
     {
@@ -109,7 +135,7 @@ class SuperadminPaymentSettings extends Component
         $this->testFlutterwaveKey = $this->paymentGateway->test_flutterwave_key;
         $this->testFlutterwaveSecret = $this->paymentGateway->test_flutterwave_secret;
         $this->testFlutterwaveHash = $this->paymentGateway->test_flutterwave_hash;
-        
+
         $hash = global_setting()->hash;
         $this->flutterwaveWebhookKey = $this->paymentGateway->flutterwave_live_webhook_key ? $this->paymentGateway->flutterwave_live_webhook_key : substr(md5($hash), 0, 10);
         $this->testFlutterwaveWebhookKey = $this->paymentGateway->flutterwave_test_webhook_key ? $this->paymentGateway->flutterwave_test_webhook_key : substr(md5($hash), 0, 10);
@@ -139,6 +165,29 @@ class SuperadminPaymentSettings extends Component
         $this->paystackMerchantEmail = $this->paymentGateway->live_paystack_merchant_email;
         $this->testPaystackMerchantEmail = $this->paymentGateway->test_paystack_merchant_email;
 
+        $this->paddleStatus = (bool) ($this->paymentGateway->paddle_status ?? false);
+        $this->paddleMode = $this->paymentGateway->paddle_mode ?? 'sandbox';
+        $this->testPaddleVendorId = $this->paymentGateway->test_paddle_vendor_id ?? null;
+        $this->testPaddleApiKey = $this->paymentGateway->test_paddle_api_key ?? null;
+        $this->testPaddlePublicKey = $this->paymentGateway->test_paddle_public_key ?? null;
+        $this->testPaddleClientToken = $this->paymentGateway->test_paddle_client_token ?? null;
+        $this->livePaddleVendorId = $this->paymentGateway->live_paddle_vendor_id ?? null;
+        $this->livePaddleApiKey = $this->paymentGateway->live_paddle_api_key ?? null;
+        $this->livePaddlePublicKey = $this->paymentGateway->live_paddle_public_key ?? null;
+        $this->livePaddleClientToken = $this->paymentGateway->live_paddle_client_token ?? null;
+        $this->paddleWebhookSecret = $this->paymentGateway->paddle_webhook_secret ?? null;
+
+
+        // Xendit credentials
+        $this->xenditStatus = (bool)$this->paymentGateway->xendit_status;
+        $this->xenditMode = $this->paymentGateway->xendit_mode; // sandbox|live
+        $this->testXenditPublicKey = $this->paymentGateway->test_xendit_public_key;
+        $this->testXenditSecretKey = $this->paymentGateway->test_xendit_secret_key;
+        $this->liveXenditPublicKey = $this->paymentGateway->live_xendit_public_key;
+        $this->liveXenditSecretKey = $this->paymentGateway->live_xendit_secret_key;
+        $this->testXenditWebhookToken = $this->paymentGateway->test_xendit_webhook_token;
+        $this->liveXenditWebhookToken = $this->paymentGateway->live_xendit_webhook_token;
+        $this->isXenditEnabled = $this->paymentGateway->xendit_status;
 
         if ($this->activePaymentSetting === 'stripe') {
             $this->webhookUrl = route('billing.verify-webhook', ['hash' => $hash]);
@@ -160,6 +209,16 @@ class SuperadminPaymentSettings extends Component
         if ($this->activePaymentSetting === 'paystack') {
             $hash = global_setting()->hash;
             $this->webhookUrl = route('billing.save-paystack-webhook', ['hash' => $hash]);
+        }
+
+        if ($this->activePaymentSetting === 'xendit') {
+            $hash = global_setting()->hash;
+            $this->webhookUrl = route('billing.save-xendit-webhook', ['hash' => $hash]);
+        }
+
+        if ($this->activePaymentSetting === 'paddle') {
+            $hash = global_setting()->hash;
+            $this->webhookUrl = route('billing.save-paddle-webhook', ['hash' => $hash]);
         }
 
     }
@@ -526,6 +585,152 @@ class SuperadminPaymentSettings extends Component
             ]);
         }
     }
+
+    public function submitFormXendit()
+    {
+        if ($this->xenditStatus) {
+            $this->validate([
+                'testXenditPublicKey' => Rule::requiredIf($this->xenditMode == 'sandbox'),
+                'testXenditSecretKey' => Rule::requiredIf($this->xenditMode == 'sandbox'),
+                'liveXenditPublicKey' => Rule::requiredIf($this->xenditMode == 'live'),
+                'liveXenditSecretKey' => Rule::requiredIf($this->xenditMode == 'live'),
+            ]);
+        }
+
+        $configError = $this->saveXenditSettings();
+
+        $this->paymentGateway->update([
+            'xendit_status' => $this->xenditStatus
+        ]);
+
+        $this->paymentGateway->fresh();
+        $this->dispatch('settingsUpdated');
+        cache()->forget('superadminPaymentGateway');
+
+        if ($configError == 0) {
+            $this->alert('success', __('messages.settingsUpdated'), [
+                'toast' => true,
+                'position' => 'top-end',
+                'showCancelButton' => false,
+                'cancelButtonText' => __('app.close')
+            ]);
+        }
+    }
+
+    private function saveXenditSettings()
+    {
+        if (!$this->xenditStatus) {
+            return 0;
+        }
+
+        try {
+            $secretKey = $this->xenditMode === 'live' ? $this->liveXenditSecretKey : $this->testXenditSecretKey;
+
+            // Test Xendit API connectivity
+            $response = Http::withHeaders([
+                'Authorization' => 'Basic ' . base64_encode($secretKey . ':'),
+                'Content-Type' => 'application/json'
+            ])->get('https://api.xendit.co/balance');
+
+            if ($response->successful()) {
+                $this->paymentGateway->update([
+                    'xendit_mode' => $this->xenditMode,
+                    'test_xendit_public_key' => $this->testXenditPublicKey,
+                    'test_xendit_secret_key' => $this->testXenditSecretKey,
+                    'live_xendit_public_key' => $this->liveXenditPublicKey,
+                    'live_xendit_secret_key' => $this->liveXenditSecretKey,
+                    'test_xendit_webhook_token' => $this->testXenditWebhookToken,
+                    'live_xendit_webhook_token' => $this->liveXenditWebhookToken,
+                    'xendit_status' => $this->xenditStatus,
+                ]);
+                return 0;
+            }
+
+            $field = $this->xenditMode === 'live' ? 'liveXenditPublicKey' : 'testXenditPublicKey';
+            $this->addError($field, 'Invalid Xendit key or secret.');
+        } catch (\Exception $e) {
+            $field = $this->xenditMode === 'live' ? 'liveXenditPublicKey' : 'testXenditPublicKey';
+            $this->addError($field, 'Error: ' . $e->getMessage());
+        }
+
+        return 1;
+    }
+
+    public function submitFormPaddle()
+    {
+        $this->validate([
+            'testPaddleVendorId' => Rule::requiredIf($this->paddleStatus == true && $this->paddleMode == 'sandbox'),
+            'testPaddleApiKey' => Rule::requiredIf($this->paddleStatus == true && $this->paddleMode == 'sandbox'),
+            'testPaddleClientToken' => Rule::requiredIf($this->paddleStatus == true && $this->paddleMode == 'sandbox'),
+            'livePaddleVendorId' => Rule::requiredIf($this->paddleStatus == true && $this->paddleMode == 'live'),
+            'livePaddleApiKey' => Rule::requiredIf($this->paddleStatus == true && $this->paddleMode == 'live'),
+            'livePaddleClientToken' => Rule::requiredIf($this->paddleStatus == true && $this->paddleMode == 'live'),
+        ]);
+
+        $configError = 0;
+
+        // Get the appropriate credentials based on environment
+        $paddleVendorId = $this->paddleMode == 'live' ? $this->livePaddleVendorId : $this->testPaddleVendorId;
+        $paddleApiKey = $this->paddleMode == 'live' ? $this->livePaddleApiKey : $this->testPaddleApiKey;
+
+        // Determine the correct API endpoint based on environment
+        $paddleApiUrl = $this->paddleMode == 'live'
+            ? 'https://api.paddle.com'
+            : 'https://sandbox-api.paddle.com';
+
+        if ($this->paddleStatus) {
+
+            try {
+                    // Paddle API uses Bearer token authentication
+                    $response = Http::withHeaders([
+                    'Authorization' => 'Bearer ' . $paddleApiKey,
+                    'Content-Type' => 'application/json'
+                ])->get($paddleApiUrl . '/products');
+
+                if ($response->successful() || $response->status() == 200) {
+                    $this->paymentGateway->update([
+                        'paddle_mode' => $this->paddleMode,
+                        'test_paddle_vendor_id' => $this->testPaddleVendorId,
+                        'test_paddle_api_key' => $this->testPaddleApiKey,
+                        'test_paddle_client_token' => $this->testPaddleClientToken,
+                        'live_paddle_vendor_id' => $this->livePaddleVendorId,
+                        'live_paddle_api_key' => $this->livePaddleApiKey,
+                        'live_paddle_client_token' => $this->livePaddleClientToken,
+                        'paddle_webhook_secret' => $this->paddleWebhookSecret,
+                    ]);
+                } else {
+                    $configError = 1;
+                    $field = $this->paddleMode == 'live' ? 'livePaddleApiKey' : 'testPaddleApiKey';
+                    $errorMessage = $response->json()['error']['detail'] ?? 'Invalid Paddle API key.';
+                    $this->addError($field, $errorMessage);
+                }
+            } catch (\Exception $e) {
+                $configError = 1;
+                $field = $this->paddleMode == 'live' ? 'livePaddleApiKey' : 'testPaddleApiKey';
+                $this->addError($field, 'Error connecting to Paddle: ' . $e->getMessage());
+            }
+        }
+
+        $this->paymentGateway->update([
+            'paddle_status' => $this->paddleStatus,
+            'paddle_webhook_secret' => $this->paddleWebhookSecret
+        ]);
+
+        $this->paymentGateway->fresh();
+        $this->dispatch('settingsUpdated');
+        cache()->forget('superadminPaymentGateway');
+
+        if ($configError == 0) {
+            $this->alert('success', __('messages.settingsUpdated'), [
+                'toast' => true,
+                'position' => 'top-end',
+                'showCancelButton' => false,
+                'cancelButtonText' => __('app.close')
+            ]);
+        }
+        }
+
+
 
     public function render()
     {

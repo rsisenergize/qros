@@ -117,6 +117,11 @@
         </div>
         <div class="kot-title">
             KOT <span class="bold">#{{ $kot->kot_number }}</span>
+            @if($kot->token_number)
+                <div style="font-size: {{ $width == 56 ? '9pt' : ($width == 80 ? '12pt' : '14pt') }}; margin-top: 1mm;">
+                    @lang('modules.order.tokenNumber'): <span class="bold">{{ $kot->token_number }}</span>
+                </div>
+            @endif
         </div>
         <div class="order-info" style="margin-bottom: 3mm;">
             <div class="order-row">

@@ -66,6 +66,7 @@ return array (
   'portAddress' => 'Add Printer Port Address',
   'ipv4Addres' => 'Add Printer IPv4 Address',
   'enterGoogleMapApiKey' => 'Enter Google Map API Key e.g., AIzaSyD-xxxxxxxxxxxxxxxxx',
+  'enterPrivacyPolicyLink' => 'Enter privacy policy URL e.g., https://yoursite.com/privacy-policy',
   'addressLabelPlaceholder' => 'e.g., home, office, etc.',
   'addressPlaceholder' => 'e.g., 123 Main St, City, Country',
   'addItemNotesPlaceholder' => 'Special Instructions? (e.g., no onions, extra spicy)',
@@ -75,6 +76,6 @@ return array (
   'search' => 'Search',
   'searchModifierGroups' => 'Search Modifier Groups...',
   'headerTextPlaceHolder' => 'Enter your custom header text here...',
+  'tableLockTimeoutPlaceholder' => 'Enter timeout in minutes. Default is 10 minutes.',
   'featureDescriptionPlaceHolder' => 'Enter feature description here...',
-
 );

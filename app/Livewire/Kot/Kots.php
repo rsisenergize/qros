@@ -171,16 +171,26 @@ class Kots extends Component
 
     public function render()
     {
-        $start = Carbon::createFromFormat('m/d/Y', $this->startDate)->startOfDay()->toDateTimeString();
-        $end = Carbon::createFromFormat('m/d/Y', $this->endDate)->endOfDay()->toDateTimeString();
+
+        $tz = timezone();
+
+        $start = Carbon::createFromFormat('m/d/Y', $this->startDate, $tz)
+            ->startOfDay()
+            ->setTimezone('UTC')
+            ->toDateTimeString();
+
+        $end = Carbon::createFromFormat('m/d/Y', $this->endDate, $tz)
+            ->endOfDay()
+            ->setTimezone('UTC')
+            ->toDateTimeString();
 
         if ($this->showAllKitchens) {
             // For all kitchens view - show KOTs from all kitchens
             $kots = Kot::withCount('items')
                 ->orderBy('id', 'desc')
                 ->join('orders', 'kots.order_id', '=', 'orders.id')
-                ->whereDate('kots.created_at', '>=', $start)
-                ->whereDate('kots.created_at', '<=', $end)
+                ->where('orders.date_time', '>=', $start)
+                ->where('orders.date_time', '<=', $end)
                 ->where('orders.status', '<>', 'draft')
                 ->with([
                     'items.menuItem',
@@ -228,7 +238,7 @@ class Kots extends Component
                 });
             }])->orderBy('id', 'desc')
                 ->join('orders', 'kots.order_id', '=', 'orders.id')
-                ->whereDate('kots.created_at', '>=', $start)->whereDate('kots.created_at', '<=', $end)
+                ->where('orders.date_time', '>=', $start)->where('orders.date_time', '<=', $end)
                 ->where('orders.status', '<>', 'draft')
                 ->whereHas('items.menuItem', function ($q) {
                     $q->where('kot_place_id', $this->kotPlace?->id);
@@ -257,7 +267,8 @@ class Kots extends Component
             // Original non-kitchen module logic
             $kots = Kot::withCount('items')->orderBy('id', 'desc')
                 ->join('orders', 'kots.order_id', '=', 'orders.id')
-                ->whereDate('kots.created_at', '>=', $start)->whereDate('kots.created_at', '<=', $end)
+                ->where('orders.date_time', '>=', $start)
+                ->where('orders.date_time', '<=', $end)
                 ->where('orders.status', '<>', 'draft')
                 ->with('items', 'items.menuItem', 'order', 'order.waiter', 'order.table', 'items.menuItemVariation', 'items.modifierOptions', 'cancelReason');
 

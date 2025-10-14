@@ -2,6 +2,7 @@
 // This file should be included in your main layout or POS view
 
 // Track if capture is already in progress to prevent multiple requests
+
 if (typeof window.printCaptureInProgress === "undefined") {
     window.printCaptureInProgress = false;
 }
@@ -55,7 +56,30 @@ document.addEventListener("livewire:init", () => {
             processOrderImageQueue();
         }
     });
+
+    // Listen for Report image save event (X/Z Reports)
+    Livewire.on("saveReportImageFromPrint", (event) => {
+        const sessionId = event[0];
+        const content = event[1];
+        const reportType = event[2]; // 'x-report' | 'z-report'
+        saveReportImageFromPrint(sessionId, content, reportType);
+    });
 });
+
+// Fallback: also bind outside livewire:init in case of timing issues
+if (window.Livewire && typeof window.Livewire.on === 'function') {
+    try {
+        window.Livewire.on('saveReportImageFromPrint', (event) => {
+            const sessionId = event[0];
+            const content = event[1];
+            const reportType = event[2];
+            console.log('[PrintImageHandler fallback] saveReportImageFromPrint:', { sessionId, reportType });
+            saveReportImageFromPrint(sessionId, content, reportType);
+        });
+    } catch (e) {
+        console.warn('[PrintImageHandler] fallback bind failed', e);
+    }
+}
 
 /**
  * Process KOT image queue sequentially
@@ -135,6 +159,13 @@ async function saveKotImageFromPrint(kotId, kotPlaceId, content) {
         iframeDoc.open();
         iframeDoc.write(content);
         iframeDoc.close();
+
+        // Disable print() inside sandboxed iframe to avoid allow-modals warning
+        try {
+            if (iframe.contentWindow && typeof iframe.contentWindow.print === 'function') {
+                iframe.contentWindow.print = function() { /* no-op for image capture */ };
+            }
+        } catch (e) {}
 
         // Wait for iframe to load and fonts to be ready
         await new Promise((resolve) => {
@@ -258,6 +289,13 @@ async function saveOrderImageFromPrint(orderId, content) {
         iframeDoc.write(content);
         iframeDoc.close();
 
+        // Disable print() inside sandboxed iframe to avoid allow-modals warning
+        try {
+            if (iframe.contentWindow && typeof iframe.contentWindow.print === 'function') {
+                iframe.contentWindow.print = function() { /* no-op for image capture */ };
+            }
+        } catch (e) {}
+
         // Wait for iframe to load and fonts to be ready
         await new Promise((resolve) => {
             iframe.onload = () => {
@@ -337,5 +375,113 @@ async function saveOrderImageFromPrint(orderId, content) {
     } catch (error) {
         console.error("Error saving Order image:", error);
         window.orderImageInProgress = false;
+    }
+}
+
+/**
+ * Save Report image using html-to-image
+ */
+async function saveReportImageFromPrint(sessionId, content, reportType) {
+    try {
+        // Sanitize HTML: remove print triggers and scripts in capture HTML
+        const sanitizeHtmlForImage = (html) => {
+            try {
+                let out = html;
+                out = out.replace(new RegExp('<script[\\s\\S]*?<\\/script>', 'gi'), '');
+                out = out.replace(new RegExp('window\\.print\\s*\\([^)]*\\);?', 'gi'), '');
+                out = out.replace(new RegExp('onload\\s*=\\s*"[^"]*print\\(\\)[^"]*"', 'gi'), '');
+                out = out.replace(new RegExp("onload\\s*=\\s*'[^']*print\\(\\)[^']*'", 'gi'), '');
+                return out;
+            } catch(e) { return html; }
+        };
+
+        const safeContent = sanitizeHtmlForImage(content);
+        // Create a hidden iframe for the Report content
+        const iframe = document.createElement("iframe");
+        iframe.style.position = "absolute";
+        iframe.style.left = "-9999px";
+        iframe.style.top = "0";
+        iframe.style.width = "auto"; // natural width
+        iframe.style.maxWidth = "576px"; // 80mm
+        iframe.style.height = "auto";
+        iframe.style.border = "none";
+        iframe.style.background = "#fff";
+
+        // Disable print functionality in iframe
+        iframe.setAttribute("sandbox", "allow-same-origin allow-scripts");
+
+        document.body.appendChild(iframe);
+
+        // Write the content to the iframe
+        const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+        iframeDoc.open();
+        iframeDoc.write(safeContent);
+        iframeDoc.close();
+
+        // Wait for iframe to load and fonts to be ready
+        await new Promise((resolve) => {
+            iframe.onload = () => {
+                if (document.fonts && document.fonts.ready) {
+                    document.fonts.ready.then(resolve);
+                } else {
+                    resolve();
+                }
+            };
+        });
+
+        const iframeBody = iframeDoc.body;
+        iframeBody.style.width = "auto";
+        iframeBody.style.maxWidth = "576px";
+        iframeBody.style.overflow = "visible";
+        iframeBody.style.display = "inline-block";
+
+        const contentWidth = iframeBody.scrollWidth;
+        const actualWidth = Math.min(contentWidth, 576);
+
+        const dataUrl = await htmlToImage.toPng(iframeBody, {
+            canvasWidth: actualWidth,
+            backgroundColor: "#fff",
+            pixelRatio: 2,
+            cacheBust: true,
+            width: actualWidth,
+            height: undefined,
+        });
+
+        const csrfToken = document
+            .querySelector('meta[name="csrf-token"]')
+            ?.getAttribute("content");
+
+        const res = await fetch("/report/png", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRF-TOKEN": csrfToken,
+            },
+            body: JSON.stringify({
+                image_base64: dataUrl,
+                session_id: sessionId,
+                report_type: reportType,
+                width: actualWidth,
+                mono: true,
+            }),
+        });
+
+        // Cleanup
+        document.body.removeChild(iframe);
+
+        if (!res.ok) {
+            const responseText = await res.text();
+            console.error("Failed to save report image:", res.status, responseText);
+            return;
+        }
+
+        try {
+            const result = await res.json();
+            console.log("Report image saved:", result.url || result.path || result);
+        } catch (e) {
+            console.log("Report image saved (non-JSON response)");
+        }
+    } catch (error) {
+        console.error("Error saving Report image:", error);
     }
 }

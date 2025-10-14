@@ -14,6 +14,7 @@ class Customer extends BaseModel
     use HasFactory;
     use Notifiable;
     use HasRestaurant;
+    use Notifiable;
 
     protected $guarded = ['id'];
 
@@ -26,4 +27,23 @@ class Customer extends BaseModel
     {
         return $this->hasMany(CustomerAddress::class)->orderBy('id', 'desc');
     }
+
+    public function routeNotificationForVonage($notification)
+    {
+        if (!is_null($this->phone) && !is_null($this->phone_code)) {
+            return '+' . $this->phone_code . $this->phone;
+        }
+
+        return null;
+    }
+
+    public function routeNotificationForMsg91($notification)
+    {
+        if (!is_null($this->phone) && !is_null($this->phone_code)) {
+            return $this->phone_code . $this->phone;
+        }
+
+        return null;
+    }
+
 }

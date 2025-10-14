@@ -27,7 +27,7 @@ class DashboardController extends Controller
         $appNameChanged = global_setting()->name != 'TableTrack'; // Assuming 'TableTrack' is the default name
 
         // If any of the onboarding steps are not completed, redirect to the onboarding page
-        if (!$smtpConfigured || !$cronConfigured || !$appNameChanged) {
+        if ((!$smtpConfigured || !$cronConfigured || !$appNameChanged) && !app()->environment('development')) {
             return view('dashboard.onboarding', compact('smtpConfigured', 'cronConfigured', 'appNameChanged'));
         }
 
