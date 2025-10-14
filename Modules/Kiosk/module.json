@@ -1,0 +1,11 @@
+{
+    "name": "Kiosk",
+    "alias": "kiosk",
+    "description": "",
+    "keywords": [],
+    "priority": 0,
+    "providers": [
+        "Modules\\Kiosk\\Providers\\KioskServiceProvider"
+    ],
+    "files": []
+}
