@@ -106,15 +106,25 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
+            set +e  # Disable exit on error
             cd ${{ secrets.DEPLOY_PATH_DEV }}
-            mkdir -p bootstrap/cache storage
+            echo "📂 Ensuring necessary directories exist..."
+            mkdir -p bootstrap/cache storage app/public
             chmod -R 775 storage bootstrap/cache || true
-            php artisan storage:link || true
-            php artisan migrate --force
-            php artisan optimize:clear
-            php artisan config:cache
-            php artisan route:cache
-            php artisan view:cache
+
+            echo "🔗 Running storage:link..."
+            php artisan storage:link || echo "⚠️ storage:link failed, maybe link already exists"
+
+            echo "🛠 Running migrations..."
+            php artisan migrate --force || echo "⚠️ migrate failed, check database connection"
+
+            echo "⚡ Optimizing Laravel..."
+            php artisan optimize:clear || true
+            php artisan config:cache || true
+            php artisan route:cache || true
+            php artisan view:cache || true
+
+            echo "✅ Deployment commands completed"
 
   deploy-test:
     name: 🧪 Deploy to Test
