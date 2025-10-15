@@ -132,6 +132,9 @@ class Cart extends Component
     public $headerType = 'text';
     public $headerText;
     public $headerImages = [];
+    public $screendropdown = '';
+    public $rowdropdown = '';
+    public $seatdropdown = '';
 
     public function mount()
     {
@@ -1476,5 +1479,10 @@ class Cart extends Component
                 ]);
             }
         }
+    }
+
+    public function updateOrderNote()
+    {
+        $this->orderNote = trim("Screen : {$this->screendropdown}, Seat: {$this->rowdropdown} {$this->seatdropdown}");
     }
 }
