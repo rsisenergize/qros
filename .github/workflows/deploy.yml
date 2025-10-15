@@ -76,13 +76,13 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: qros_build
-          path: build/
+          path: deploy/
           merge-multiple: true
 
       - uses: actions/checkout@v4
 
       - name: 🔐 Copy Dev Environment File
-        run: cp .env.dev .env
+        run: cp .env.dev deploy/.env
 
       - name: 🔑 Setup SSH Key
         run: |
@@ -96,7 +96,7 @@ jobs:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: "./*"
+          source: "deploy/*"
           target: ${{ secrets.DEPLOY_PATH_DEV }}
 
       - name: 🧠 Run Laravel Commands (Dev)
@@ -137,7 +137,7 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: qros_build
-          path: build/
+          path: deploy/
           merge-multiple: true
 
       - uses: actions/checkout@v4
@@ -186,7 +186,7 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: qros_build
-          path: build/
+          path: deploy/
           merge-multiple: true
 
       - uses: actions/checkout@v4
@@ -235,7 +235,7 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: qros_build
-          path: build/
+          path: deploy/
           merge-multiple: true
 
       - uses: actions/checkout@v4
@@ -275,3 +275,4 @@ jobs:
             php artisan route:cache
             php artisan view:cache
             php artisan up || true
+            echo "✅ Production deployment completed"
