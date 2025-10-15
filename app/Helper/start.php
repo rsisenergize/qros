@@ -548,7 +548,11 @@ if (!function_exists('currency_format_setting')) {
     function currency_format_setting($currencyId = null)
     {
         if (!session()->has('currency_format_setting' . $currencyId) || (is_null($currencyId) && restaurant())) {
-            $setting = $currencyId == null ? restaurant()->load('currency')->currency : Currency::where('id', $currencyId)->first();
+            if ($currencyId == null && restaurant()) {
+                $setting = restaurant()->load('currency')->currency;
+            } else {
+                $setting = Currency::where('id', $currencyId)->first();
+            }
             session(['currency_format_setting' . $currencyId => $setting]);
         }
 
@@ -559,18 +563,26 @@ if (!function_exists('currency_format_setting')) {
 if (!function_exists('currency_format')) {
 
     // @codingStandardsIgnoreLine
-    function currency_format($amount, $currencyId = null, $showSymbol = true)
+    function currency_format($amount, $currencyId = null, $showSymbol = true, $showCode = false)
     {
         $formats = currency_format_setting($currencyId);
 
-        if (!$showSymbol) {
-            $currency_symbol = '';
-        } else {
-            $settings = $formats->restaurant ?? Restaurant::find($formats->restaurant_id);
-            $currency_symbol = $currencyId == null ? $settings->currency->currency_symbol : $formats->currency_symbol;
+        $settings = $formats->restaurant ?? Restaurant::find($formats->restaurant_id);
+
+        if ($showCode) {
+            $currency_symbol = $formats->currency_code ?? '';
+        }
+        else{
+            if (!$showSymbol) {
+                $currency_symbol = '';
+            } else {
+                $settings = $formats->restaurant ?? Restaurant::find($formats->restaurant_id);
+                $currency_symbol = $currencyId == null ? $settings->currency->currency_symbol : $formats->currency_symbol;
+            }
         }
 
-        $currency_position = $formats->currency_position;
+
+        $currency_position = $formats->currency_position ?? 'left';
         $no_of_decimal = !is_null($formats->no_of_decimal) ? $formats->no_of_decimal : '0';
         $thousand_separator = !is_null($formats->thousand_separator) ? $formats->thousand_separator : '';
         $decimal_separator = !is_null($formats->decimal_separator) ? $formats->decimal_separator : '0';

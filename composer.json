@@ -37,6 +37,7 @@
         "nwidart/laravel-modules": "*",
         "opcodesio/log-viewer": "^3.15",
         "paypal/rest-api-sdk-php": "dev-laravel10",
+        "phiki/phiki": "^2.0",
         "pusher/pusher-php-server": "^7.2",
         "pusher/pusher-push-notifications": "^2.0",
         "razorpay/razorpay": "^2.9",
