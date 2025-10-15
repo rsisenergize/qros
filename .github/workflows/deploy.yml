@@ -107,6 +107,7 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             cd ${{ secrets.DEPLOY_PATH_DEV }}
+            mkdir -p bootstrap/cache storage
             chmod -R 775 storage bootstrap/cache || true
             php artisan storage:link || true
             php artisan migrate --force
