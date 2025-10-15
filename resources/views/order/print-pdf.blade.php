@@ -288,8 +288,8 @@
                 <tr>
                     <th class="qty">@lang('modules.order.qty')</th>
                     <th class="description">@lang('modules.menu.itemName')</th>
-                    <th class="price">@lang('modules.order.price')</th>
-                    <th class="amount">@lang('modules.order.amount')</th>
+                    <th class="price">@lang('modules.order.price') ({{ restaurant()->currency->currency_code }})</th>
+                    <th class="amount">@lang('modules.order.amount') ({{ restaurant()->currency->currency_code }})</th>
                 </tr>
             </thead>
             <tbody>
@@ -304,7 +304,7 @@
                             @foreach ($item->modifierOptions as $modifier)
                                 <div class="modifiers">• {{ $modifier->name }}
                                     @if($modifier->price > 0)
-                                        (+{{ currency_format($modifier->price, restaurant()->currency_id) }})
+                                        (+{{ currency_format($modifier->price, restaurant()->currency_id, false, true) }})
                                     @endif
                                 </div>
                             @endforeach
@@ -312,8 +312,8 @@
                                 <div class="modifiers"><em>@lang('modules.order.note'): {{ $item->note }}</em></div>
                             @endif
                         </td>
-                        <td class="price">{{ currency_format($item->price, restaurant()->currency_id) }}</td>
-                        <td class="amount">{{ currency_format($item->amount, restaurant()->currency_id) }}</td>
+                        <td class="price">{{ currency_format($item->price, restaurant()->currency_id, false, false) }}</td>
+                        <td class="amount">{{ currency_format($item->amount, restaurant()->currency_id, false, false) }}</td>
                     </tr>
                 @endforeach
             </tbody>
@@ -322,7 +322,7 @@
         <div class="summary">
             <div class="summary-row">
                 <span>@lang('modules.order.subTotal'):</span>
-                <span>{{ currency_format($order->sub_total, restaurant()->currency_id) }}</span>
+                <span>  {{ currency_format($order->sub_total, restaurant()->currency_id, false, true) }} </span>
             </div>
 
             @if (!is_null($order->discount_amount))
@@ -332,7 +332,7 @@
                             ({{ rtrim(rtrim($order->discount_value, '0'), '.') }}%)
                         @endif:
                     </span>
-                    <span>-{{ currency_format($order->discount_amount, restaurant()->currency_id) }}</span>
+                    <span>-{{ currency_format($order->discount_amount, restaurant()->currency_id, false, true) }}</span>
                 </div>
             @endif
 
@@ -343,14 +343,14 @@
                             ({{ $item->charge->charge_value }}%)
                         @endif:
                     </span>
-                    <span>{{ currency_format(($item->charge->getAmount($order->sub_total - ($order->discount_amount ?? 0))), restaurant()->currency_id) }}</span>
+                    <span>{{ currency_format(($item->charge->getAmount($order->sub_total - ($order->discount_amount ?? 0))), restaurant()->currency_id, true, true) }}</span>
                 </div>
             @endforeach
 
             @if ($order->tip_amount > 0)
                 <div class="summary-row">
                     <span>@lang('modules.order.tip'):</span>
-                    <span>{{ currency_format($order->tip_amount, restaurant()->currency_id) }}</span>
+                    <span>{{ currency_format($order->tip_amount, restaurant()->currency_id, false, true) }}</span>
                 </div>
             @endif
 
@@ -359,7 +359,7 @@
                     <span>@lang('modules.delivery.deliveryFee'):</span>
                     <span>
                         @if($order->delivery_fee > 0)
-                            {{ currency_format($order->delivery_fee, restaurant()->currency_id) }}
+                            {{ currency_format($order->delivery_fee, restaurant()->currency_id, false, true) }}
                         @else
                             @lang('modules.delivery.freeDelivery')
                         @endif
@@ -371,7 +371,7 @@
                 @foreach ($order->taxes as $item)
                     <div class="summary-row">
                         <span>{{ $item->tax->tax_name }} ({{ $item->tax->tax_percent }}%):</span>
-                        <span>{{ currency_format(($item->tax->tax_percent / 100) * ($order->sub_total - ($order->discount_amount ?? 0)), restaurant()->currency_id) }}</span>
+                        <span>{{ currency_format(($item->tax->tax_percent / 100) * ($order->sub_total - ($order->discount_amount ?? 0)), restaurant()->currency_id, false, true) }}</span>
                     </div>
                 @endforeach
             @else
@@ -398,12 +398,12 @@
                     @foreach ($taxTotals as $taxName => $taxInfo)
                         <div class="summary-row secondary">
                             <span>{{ $taxName }} ({{ $taxInfo['percent'] }}%)</span>
-                            <span>{{ currency_format($taxInfo['amount'], restaurant()->currency_id) }}</span>
+                            <span>{{ currency_format($taxInfo['amount'], restaurant()->currency_id, false, true) }}</span>
                         </div>
                     @endforeach
                     <div class="summary-row">
                         <span>@lang('modules.order.totalTax'):</span>
-                        <span>{{ currency_format($totalTax, restaurant()->currency_id) }}</span>
+                        <span>{{ currency_format($totalTax, restaurant()->currency_id, false, true) }}</span>
                     </div>
                 @endif
             @endif
@@ -411,13 +411,13 @@
             @if ($payment)
                 <div class="summary-row">
                     <span>@lang('modules.order.balanceReturn'):</span>
-                    <span>{{ currency_format($payment->balance, restaurant()->currency_id) }}</span>
+                    <span>{{ currency_format($payment->balance, restaurant()->currency_id, false, true) }}</span>
                 </div>
             @endif
 
             <div class="summary-row total">
                 <span>@lang('modules.order.total'):</span>
-                <span>{{ currency_format($order->total, restaurant()->currency_id) }}</span>
+                <span>{{ currency_format($order->total, restaurant()->currency_id, false, true) }}</span>
             </div>
         </div>
 
@@ -435,7 +435,7 @@
                     <tbody>
                         @foreach ($order->payments as $payment)
                             <tr>
-                                <td class="qty">{{ currency_format($payment->amount, restaurant()->currency_id) }}</td>
+                                <td class="qty">{{ currency_format($payment->amount, restaurant()->currency_id, false, true) }}</td>
                                 <td class="description">@lang('modules.order.' . $payment->payment_method)</td>
                                 <td class="price">
                                     @if($payment->payment_method != 'due')

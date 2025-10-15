@@ -1712,7 +1712,7 @@ class Pos extends Component
             'cash_due' => null,
         ];
 
-        // $userId = auth()->id();
+        $userId = auth()->id();
         // $cacheKey = 'customer_display_cart_user_' . $userId;
         // Cache::put($cacheKey, $customerDisplayData, now()->addMinutes(30));
 

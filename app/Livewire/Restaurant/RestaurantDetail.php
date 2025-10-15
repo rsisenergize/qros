@@ -40,24 +40,26 @@ class RestaurantDetail extends Component
             'branches' => function ($query) {
                 $query->withCount('orders');
             },
-            'users' => function($query) {
+            'users' => function ($query) {
                 $query->orderBy('id')->limit(1);
             }
         ])->where('hash', $this->hash)->firstOrFail();
-        
+
         $this->restaurantAdmin = $this->restaurant->users->first();
-        
+
         // Initialize SMS count info
-        $this->getSmsCountInfo();
+        if (module_enabled('Sms')) {
+            $this->getSmsCountInfo();
+        }
     }
 
     public function getSmsCountInfo()
     {
-        if ($this->restaurant) {
+        if ($this->restaurant && in_array('Sms', restaurant_modules())) {
             // Use restaurant's total_sms instead of package sms_count
             $this->packageSmsCount = $this->restaurant->total_sms ?? 0;
             $this->usedSmsCount = $this->restaurant->count_sms ?? 0;
-            
+
             if ($this->packageSmsCount == -1) {
                 $this->remainingSmsCount = -1;
                 $this->isSmsLimitReached = false;
@@ -126,12 +128,16 @@ class RestaurantDetail extends Component
 
     public function addSmsTopup()
     {
+        if (!in_array('Sms', restaurant_modules())) {
+            return;
+        }
+
         $this->validate([
             'smsTopupAmount' => 'required|integer|min:1',
         ]);
 
         $this->restaurant->total_sms = ($this->restaurant->total_sms == -1) ? -1 : ($this->restaurant->total_sms ?? 0) + $this->smsTopupAmount;
-        
+
         $this->restaurant->save();
 
         $this->getSmsCountInfo();
@@ -150,5 +156,4 @@ class RestaurantDetail extends Component
     {
         return view('livewire.restaurant.restaurant-detail');
     }
-
 }

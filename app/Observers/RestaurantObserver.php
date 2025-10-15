@@ -32,22 +32,23 @@ class RestaurantObserver
         }
 
         if ($restaurant->isDirty('package_id')) {
-            if (in_array('Sms', restaurant_modules())) {
-        
+
+            if (in_array('Sms', restaurant_modules()) && module_enabled('Sms')) {
+
                 $oldPackageId = $restaurant->getOriginal('package_id');
                 $oldPackage   = Package::find($oldPackageId);
                 $newPackage   = Package::find($restaurant->package_id);
-        
+
                 $totalSms = $newPackage?->sms_count ?? 0;
-        
+
                 if ($oldPackage && $newPackage && $oldPackage->sms_count != -1 && $newPackage->sms_count != -1 && $newPackage->carry_forward_sms) {
                     $remaining = max(0, ($restaurant->getOriginal('total_sms') ?? 0) - ($restaurant->getOriginal('count_sms') ?? 0));
-        
+
                     $totalSms = $remaining + $newPackage->sms_count;
                 }
-        
+
                 $restaurant->total_sms = $totalSms;
-        
+
                 $restaurant->count_sms = 0;
             }
         }
@@ -151,7 +152,7 @@ class RestaurantObserver
 
         $restaurant->currency_id = $defaultCurrency->id;
         $restaurant->customer_site_language = 'en';
-        
+
         $restaurant->save();
     }
 
@@ -210,8 +211,8 @@ class RestaurantObserver
             $slug = str()->slug($name, '-');
         }
 
-         // Fallback if slug is empty or contains only hyphens (happens with non-Latin scripts)
-         if (empty($slug) || trim($slug, '-') === '') {
+        // Fallback if slug is empty or contains only hyphens (happens with non-Latin scripts)
+        if (empty($slug) || trim($slug, '-') === '') {
             // Use transliteration or fallback to a unique identifier
             $slug = uniqid();
         }
@@ -231,5 +232,4 @@ class RestaurantObserver
 
         return $slug;
     }
-
 }
