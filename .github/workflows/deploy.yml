@@ -40,15 +40,15 @@ jobs:
         run: |
           echo "📦 Copying Laravel app to deploy directory..."
           mkdir -p deploy
-          rsync -av --progress ./ ./deploy/ \
-            --exclude='.git*' \
-            --exclude='node_modules' \
-            --exclude='tests' \
-            --exclude='.env*' \
-            --exclude='storage/app/public/*' \
-            --exclude='storage/logs/*' \
-            --exclude='storage/framework/*' \
-            --exclude='public/uploads/*'
+          rsync -r --progress . deploy \
+            --exclude=".git*" \
+            --exclude="node_modules" \
+            --exclude="tests" \
+            --exclude=".env*" \
+            --exclude="storage/app/public/*" \
+            --exclude="storage/logs/*" \
+            --exclude="storage/framework/*" \
+            --exclude="public/uploads/*"
           echo "✅ Copy complete."
 
       - name: ✅ Verify deploy folder before upload
