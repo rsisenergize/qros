@@ -1,4 +1,4 @@
-name: 🚀 Qros Multi-Environment CI/CD (SCP Deployment for cPanel)
+name: 🚀 Qros Multi-Environment CI/CD (Rsync Root-Based)
 
 on:
   push:
@@ -36,35 +36,14 @@ jobs:
             echo "ℹ️ No frontend detected, skipping."
           fi
 
-      - name: 📁 Prepare Deployment Package
-        run: |
-          echo "📦 Copying Laravel app to deploy directory..."
-          mkdir -p deploy
-          rsync -r --progress . deploy \
-            --exclude=".git*" \
-            --exclude="node_modules" \
-            --exclude="tests" \
-            --exclude=".env*" \
-            --exclude="storage/app/public/*" \
-            --exclude="storage/logs/*" \
-            --exclude="storage/framework/*" \
-            --exclude="public/uploads/*"
-          echo "✅ Copy complete."
-
-      - name: ✅ Verify deploy folder before upload
-        run: |
-          FILE_COUNT=$(find deploy -type f | wc -l)
-          echo "📁 Files in deploy: $FILE_COUNT"
-          if [ -f deploy/artisan ]; then echo "✅ Artisan found"; else echo "❌ Artisan missing"; exit 1; fi
-
       - name: 📤 Upload Build Artifact
         uses: actions/upload-artifact@v4
         with:
           name: qros_build
-          path: deploy/
+          path: ./
 
   # ===========================================================
-  # 2️⃣ DEPLOY JOBS
+  # 2️⃣ DEPLOY JOB TEMPLATE
   # ===========================================================
 
   deploy-dev:
@@ -76,28 +55,31 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: qros_build
-          path: build/
-          merge-multiple: true
+          path: ./
 
       - uses: actions/checkout@v4
 
       - name: 🔐 Copy Dev Environment File
-        run: cp .env.dev build/.env
+        run: cp .env.dev .env
 
-      - name: 🔑 Setup SSH Key
+      - name: 🔑 Setup SSH
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
 
-      - name: 🚀 Upload to Dev via SCP
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: "build/*"
-          target: ${{ secrets.DEPLOY_PATH_DEV }}
+      - name: 🚀 Deploy via Rsync
+        run: |
+          rsync -avz \
+            --exclude=".git*" \
+            --exclude="node_modules" \
+            --exclude="tests" \
+            --exclude=".env*" \
+            --exclude="storage/app/public/*" \
+            --exclude="storage/logs/*" \
+            --exclude="storage/framework/*" \
+            --exclude="public/uploads/*" \
+            ./ ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.DEPLOY_PATH_DEV }}
 
       - name: 🧠 Run Laravel Commands (Dev)
         uses: appleboy/ssh-action@v1.0.3
@@ -126,28 +108,31 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: qros_build
-          path: build/
-          merge-multiple: true
+          path: ./
 
       - uses: actions/checkout@v4
 
       - name: 🔐 Copy Test Environment File
-        run: cp .env.test build/.env
+        run: cp .env.test .env
 
-      - name: 🔑 Setup SSH Key
+      - name: 🔑 Setup SSH
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
 
-      - name: 🚀 Upload to Test via SCP
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: "build/*"
-          target: ${{ secrets.DEPLOY_PATH_TEST }}
+      - name: 🚀 Deploy via Rsync
+        run: |
+          rsync -avz \
+            --exclude=".git*" \
+            --exclude="node_modules" \
+            --exclude="tests" \
+            --exclude=".env*" \
+            --exclude="storage/app/public/*" \
+            --exclude="storage/logs/*" \
+            --exclude="storage/framework/*" \
+            --exclude="public/uploads/*" \
+            ./ ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.DEPLOY_PATH_TEST }}
 
       - name: 🧠 Run Laravel Commands (Test)
         uses: appleboy/ssh-action@v1.0.3
@@ -175,28 +160,31 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: qros_build
-          path: build/
-          merge-multiple: true
+          path: ./
 
       - uses: actions/checkout@v4
 
       - name: 🔐 Copy Preprod Environment File
-        run: cp .env.preprod build/.env
+        run: cp .env.preprod .env
 
-      - name: 🔑 Setup SSH Key
+      - name: 🔑 Setup SSH
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
 
-      - name: 🚀 Upload to Preprod via SCP
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: "build/*"
-          target: ${{ secrets.DEPLOY_PATH_PREPROD }}
+      - name: 🚀 Deploy via Rsync
+        run: |
+          rsync -avz \
+            --exclude=".git*" \
+            --exclude="node_modules" \
+            --exclude="tests" \
+            --exclude=".env*" \
+            --exclude="storage/app/public/*" \
+            --exclude="storage/logs/*" \
+            --exclude="storage/framework/*" \
+            --exclude="public/uploads/*" \
+            ./ ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.DEPLOY_PATH_PREPROD }}
 
       - name: 🧠 Run Laravel Commands (Preprod)
         uses: appleboy/ssh-action@v1.0.3
@@ -224,28 +212,31 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: qros_build
-          path: build/
-          merge-multiple: true
+          path: ./
 
       - uses: actions/checkout@v4
 
       - name: 🔐 Copy Production Environment File
-        run: cp .env.prod build/.env
+        run: cp .env.prod .env
 
-      - name: 🔑 Setup SSH Key
+      - name: 🔑 Setup SSH
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
 
-      - name: 🚀 Upload to Production via SCP
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: "build/*"
-          target: ${{ secrets.DEPLOY_PATH_PROD }}
+      - name: 🚀 Deploy via Rsync
+        run: |
+          rsync -avz \
+            --exclude=".git*" \
+            --exclude="node_modules" \
+            --exclude="tests" \
+            --exclude=".env*" \
+            --exclude="storage/app/public/*" \
+            --exclude="storage/logs/*" \
+            --exclude="storage/framework/*" \
+            --exclude="public/uploads/*" \
+            ./ ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.DEPLOY_PATH_PROD }}
 
       - name: 🧠 Run Laravel Commands (Production)
         uses: appleboy/ssh-action@v1.0.3
