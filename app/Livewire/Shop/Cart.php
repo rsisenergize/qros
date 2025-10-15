@@ -610,7 +610,7 @@ class Cart extends Component
                 'pickup_date' => $this->deliveryDateTime,
                 'delivery_address' => $this->customerAddress,
                 'status' => 'draft',
-                'order_status' => $this->restaurant->auto_confirm_orders ? 'confirmed' : 'placed',
+                'order_status' => $this->restaurant->auto_confirm_orders ? ($this->orderType == 'dine_in' ? 'served' : 'delivered') : 'placed',
                 'customer_lat' => $this->addressLat ?? null,
                 'customer_lng' => $this->addressLng ?? null,
                 'delivery_fee' => $this->deliveryFee ?? 0,
@@ -644,6 +644,10 @@ class Cart extends Component
             'note' => $this->orderNote,
             'transaction_id' => $transactionId
         ]);
+
+        if ($this->restaurant->auto_confirm_orders) {
+            $kot->update(['status' => 'served']);
+        }
 
         foreach ($this->orderItemList as $key => $value) {
 
