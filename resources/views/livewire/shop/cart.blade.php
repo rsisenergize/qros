@@ -665,33 +665,6 @@
                         class="w-full h-auto p-4 mt-3 space-y-4 text-center rounded select-none bg-gray-50 dark:bg-gray-700">
                         <div class="mb-3">
                             <div x-data="{ showNotes: false }" x-cloak>
-                                @if ($restaurant->allow_theatre_order)
-                                <div class="flex flex-col gap-2 mb-4">
-                                    <!-- Screen Dropdown (1 to 7) -->
-                                    <select wire:model="screendropdown" wire:change="updateOrderNote" class="border rounded p-2">
-                                        <option value="">Select Screen</option>
-                                        @for ($i = 1; $i <= 5; $i++)
-                                            <option value="Screen {{ $i }}">Screen {{ $i }}</option>
-                                        @endfor
-                                    </select>
-
-                                    <!-- Row Dropdown (A to K) -->
-                                    <select wire:model="rowdropdown" wire:change="updateOrderNote" class="border rounded p-2">
-                                        <option value="">Select Row</option>
-                                        @foreach (range('A', 'K') as $row)
-                                            <option value="{{ $row }}">Row {{ $row }}</option>
-                                        @endforeach
-                                    </select>
-
-                                    <!-- Seat Dropdown (1 to 20) -->
-                                    <select wire:model="seatdropdown" wire:change="updateOrderNote" class="border rounded p-2">
-                                        <option value="">Select Seat No</option>
-                                        @for ($i = 1; $i <= 15; $i++)
-                                            <option value="{{ $i }}">Seat {{ $i }}</option>
-                                        @endfor
-                                    </select>
-                                </div>
-                                @else
                                 <!-- Add Note Button -->
                                 <div x-show="!showNotes && !$wire.orderNote" class="flex">
                                     <x-secondary-button @click="showNotes = true"
@@ -704,7 +677,7 @@
                                         @lang('modules.order.addNote')
                                     </x-secondary-button>
                                 </div>
-                                @endif
+
                                 <!-- Notes Form -->
                                 <div x-show="showNotes" x-transition:enter="transition ease-out duration-300"
                                     x-transition:enter-start="opacity-0 transform scale-95"
@@ -967,7 +940,7 @@
                                                     wire:target="placeOrder(true)">{!! $loadingSpinner !!}</span>
                                                 @lang('modules.order.payNow')
                                             </x-button>
-                                            {{--
+
                                             @if (!$isPaymentEnabled)
                                                 <x-secondary-button
                                                     class="flex items-center justify-center w-full gap-2"
@@ -977,7 +950,6 @@
                                                     @lang('modules.order.payLater')
                                                 </x-secondary-button>
                                             @endif
-                                             --}}
                                         @else
                                             <x-button class="flex items-center justify-center w-full gap-2"
                                                 wire:click="placeOrder" wire:loading.delay.attr="disabled">

@@ -194,7 +194,9 @@
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                             </svg>
-                            Reset Branch Key
+
+                            @lang('modules.printerSetting.resetBranchKey')
+
                         </button>
                     </div>
                 </div>
@@ -237,7 +239,7 @@
                                 <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
                                     <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
                                 </svg>
-                                Your Device
+                                @lang('modules.printerSetting.yourDevice')
                             </span>
                         @endif
                     </div>
@@ -263,7 +265,7 @@
                                 <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
                                     <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
                                 </svg>
-                                Your Device
+                                @lang('modules.printerSetting.yourDevice')
                             </span>
                         @endif
                     </div>
@@ -528,8 +530,8 @@
     <!-- Modal for Reset Branch Key Confirmation -->
 <div id="resetBranchKeyModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 hidden">
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-8 max-w-md w-full">
-        <h3 class="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Confirm Reset Branch Key</h3>
-        <p class="mb-6 text-gray-700 dark:text-gray-300">Are you sure you want to reset the branch key? This action cannot be undone.</p>
+        <h3 class="text-lg font-semibold mb-4 text-gray-900 dark:text-white">@lang('modules.printerSetting.confirmResetBranchKey')</h3>
+        <p class="mb-6 text-gray-700 dark:text-gray-300">@lang('modules.printerSetting.confirmResetBranchKeyDescription')</p>
         <div class="flex justify-end gap-2">
             <button type="button" onclick="closeResetBranchKeyModal()" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 dark:bg-gray-700 dark:text-gray-200 rounded">Cancel</button>
             <button type="button" wire:click="resetBranchKey" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded">Reset</button>

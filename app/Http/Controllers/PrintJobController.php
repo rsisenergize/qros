@@ -101,7 +101,7 @@ class PrintJobController extends Controller
             ->get();
 
         if ($jobs->isEmpty()) {
-            return response()->json(['message' => 'No pending jobs', 'status' => 'error'], 200);
+            return response()->json([]); // Return empty array instead of object
         }
 
         // Filter jobs to only include those where the image file exists
@@ -116,7 +116,7 @@ class PrintJobController extends Controller
         });
 
         if ($validJobs->isEmpty()) {
-            return response()->json(['message' => 'No pending jobs with valid image files', 'status' => 'error'], 200);
+            return response()->json([]); // Return empty array instead of object
         }
 
         foreach ($validJobs as $item) {

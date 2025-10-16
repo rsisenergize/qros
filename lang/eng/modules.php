@@ -444,6 +444,8 @@ return [
         'preparing' => 'Preparing',
         'readyForPickup' => 'Ready for Pickup',
         'noOrders' => 'Waiting for orders...',
+        'tokenNumberSettingsDescriptionOrderType' => 'Enable token numbers for :orderType orders. Tokens will be displayed on order details and reset daily.',
+        'noOrderTypesFound' => 'No order types found for this branch.',
     ],
 
     'customer' => [
@@ -480,6 +482,7 @@ return [
     ],
 
     'settings' => [
+        'noQrCode' => 'No QR Code',
         'appSettings' => 'App Settings',
         'restaurantInformation' => 'Restaurant Information',
         'restaurantName' => 'Restaurant Name',
@@ -1953,6 +1956,10 @@ return [
         'downloadDesktopAppMac' => 'Download the desktop app for macOS to enable direct printing',
         'downloadForWindows' => 'Download for Windows',
         'downloadForMac' => 'Download for macOS',
+        'yourDevice' => 'Your Device',
+        'resetBranchKey' => 'Reset Branch Key',
+        'confirmResetBranchKey' => 'Confirm Reset Branch Key',
+        'confirmResetBranchKeyDescription' => 'Are you sure you want to reset the branch key? This action cannot be undone.',
     ],
 
     'moduleLicenseStatus' => [

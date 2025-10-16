@@ -162,7 +162,9 @@
                                                 <img src="{{ $paymentQrCode }}" alt="QR Code"
                                                     class="h-24 w-24 object-contain">
                                             @else
-                                                <span class="text-gray-500 dark:text-gray-400">No QR Code</span>
+                                                <span class="text-gray-500 dark:text-gray-400">
+                                                    @lang('modules.settings.noQrCode')
+                                                </span>
                                             @endif
                                         </div>
 
