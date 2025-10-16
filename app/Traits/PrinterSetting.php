@@ -85,6 +85,8 @@ trait PrinterSetting
 
         $kot = Kot::with('items', 'order.waiter', 'table')->find($kotId);
 
+
+
         $this->imageFilename = 'kot-' . $kotId . '.png';
         $this->createPrintJobRecord($kot->branch_id);
 

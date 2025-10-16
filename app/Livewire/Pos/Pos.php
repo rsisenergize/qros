@@ -1841,9 +1841,8 @@ class Pos extends Component
         if ($this->orderID) {
             $order = Order::find($this->orderID);
 
-
             if ($order) {
-                $order->update(['waiter_id' => is_int($value) ? $value : null]);
+                $order->update(['waiter_id' => intval($value)]);
                 $this->alert('success', __('messages.waiterUpdated'), [
                     'toast' => true,
                     'position' => 'top-end',

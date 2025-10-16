@@ -229,25 +229,24 @@
                         <div class="space-y-4">
                             @forelse($this->orderTypes as $orderType)
                                 <div class="flex gap-x-3 items-center p-4 bg-gray-100 rounded-lg shadow-sm dark:bg-gray-700">
-                                    <x-checkbox 
-                                        name="tokenSettings.{{ $orderType->id }}" 
-                                        id="tokenSettings_{{ $orderType->id }}" 
+                                    <x-checkbox
+                                        name="tokenSettings.{{ $orderType->id }}"
+                                        id="tokenSettings_{{ $orderType->id }}"
                                         wire:model.live="tokenSettings.{{ $orderType->id }}"
                                         class="mr-4 accent-indigo-600" />
                                     <div class="flex-1">
-                                        <x-label 
-                                            for="tokenSettings_{{ $orderType->id }}" 
-                                            :value="$orderType->order_type_name" 
+                                        <x-label
+                                            for="tokenSettings_{{ $orderType->id }}"
+                                            :value="$orderType->order_type_name"
                                             class="!mb-1 font-medium" />
                                         <p class="text-sm text-gray-500 dark:text-gray-400">
-                                            Enable token numbers for {{ $orderType->order_type_name }} orders. 
-                                            Tokens will be displayed on order details and reset daily.
+                                            @lang('modules.order.tokenNumberSettingsDescriptionOrderType', ['orderType' => $orderType->order_type_name])
                                         </p>
                                     </div>
                                 </div>
                             @empty
                                 <div class="p-4 text-center text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                                    No order types found for this branch.
+                                    @lang('modules.order.noOrderTypesFound')
                                 </div>
                             @endforelse
                         </div>
