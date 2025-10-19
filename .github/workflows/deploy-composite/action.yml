@@ -1,0 +1,72 @@
+name: "Deploy Composite"
+description: "Reusable deployment step for Laravel apps via SCP + SSH"
+inputs:
+  env-name:
+    description: "Environment name (dev/test/preprod/prod)"
+    required: true
+  env-file:
+    description: "Path to environment file (.env.dev/.env.test/etc.)"
+    required: true
+  ssh-host:
+    description: "Server SSH host"
+    required: true
+  ssh-user:
+    description: "Server SSH username"
+    required: true
+  ssh-key:
+    description: "Private SSH key"
+    required: true
+  deploy-path:
+    description: "Target deployment path on server"
+    required: true
+runs:
+  using: "composite"
+  steps:
+    - name: "Setup SSH Key"
+      shell: bash
+      run: |
+        mkdir -p ~/.ssh
+        echo "${{ inputs.ssh-key }}" > ~/.ssh/id_rsa
+        chmod 600 ~/.ssh/id_rsa
+
+    - name: "Copy Environment File"
+      shell: bash
+      run: |
+        cp "${{ inputs.env-file }}" deploy/.env
+        echo "✅ Environment file copied for ${{ inputs.env-name }}"
+
+    - name: "Upload to Server via SCP"
+      uses: appleboy/scp-action@v0.1.7
+      with:
+        host: ${{ inputs.ssh-host }}
+        username: ${{ inputs.ssh-user }}
+        key: ${{ inputs.ssh-key }}
+        source: "deploy/*"
+        target: ${{ inputs.deploy-path }}
+
+    - name: "Run SSH Laravel Commands"
+      shell: bash
+      run: |
+        ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa ${{ inputs.ssh-user }}@${{ inputs.ssh-host }} << 'EOF'
+        set -e
+        cd ${{ inputs.deploy-path }}
+        
+        if [[ "${{ inputs.env-name }}" == "prod" ]]; then
+          php artisan down || true
+        fi
+
+        mkdir -p bootstrap/cache storage app/public
+        chmod -R 775 storage bootstrap/cache || true
+
+        php artisan storage:link || true
+        php artisan migrate --force
+        php artisan optimize:clear
+        php artisan config:cache
+        php artisan route:cache
+        php artisan view:cache
+
+        if [[ "${{ inputs.env-name }}" == "prod" ]]; then
+          php artisan up || true
+        fi
+        echo "✅ Deployment completed for ${{ inputs.env-name }}"
+        EOF
