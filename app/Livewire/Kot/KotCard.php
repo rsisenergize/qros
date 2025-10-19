@@ -238,7 +238,7 @@ class KotCard extends Component
                             break;
                     }
                 } catch (\Throwable $e) {
-                    $this->alert('error', __('messages.printerNotConnected') . ' ' . $e->getMessage(), [
+                    $this->alert('error', __('messages.printerNotConnected') . ' executePrintKot error: ' . $e->getMessage(), [
                         'toast' => true,
                         'position' => 'top-end',
                         'showCancelButton' => false,
@@ -256,11 +256,11 @@ class KotCard extends Component
                 $this->dispatch('print_location', $url);
             }
 
-            // dd([$kot,$kotPlace?->id]);
+
             try {
                 switch ($printerSetting->printing_choice) {
                     case 'directPrint':
-                        $this->handleKotPrint($kot, $kotPlace->id);
+                        $this->handleKotPrint($kot->id, $kotPlace->id);
                         break;
                     default:
                         $url = route('kot.print', [$kot]);
@@ -268,7 +268,7 @@ class KotCard extends Component
                         break;
                 }
             } catch (\Throwable $e) {
-                $this->alert('error', __('messages.printerNotConnected') . ' ' . $e->getMessage(), [
+                $this->alert('error', __('messages.printerNotConnected') . ' executePrintKot error else: ' . $e->getMessage(), [
                     'toast' => true,
                     'position' => 'top-end',
                     'showCancelButton' => false,
@@ -280,7 +280,6 @@ class KotCard extends Component
 
     public function render()
     {
-        // $printer = Printer::where('is_default', true)->first();
 
         return view('livewire.kot.kot-card');
     }

@@ -1480,7 +1480,6 @@ class Cart extends Component
             }
         }
     }
-
     public function updateOrderNote()
     {
         $this->orderNote = trim("Screen : {$this->screendropdown}, Seat: {$this->rowdropdown} {$this->seatdropdown}");

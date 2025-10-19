@@ -977,7 +977,7 @@
                                                     @lang('modules.order.payLater')
                                                 </x-secondary-button>
                                             @endif
-                                             --}}
+                                            --}}
                                         @else
                                             <x-button class="flex items-center justify-center w-full gap-2"
                                                 wire:click="placeOrder" wire:loading.delay.attr="disabled">
