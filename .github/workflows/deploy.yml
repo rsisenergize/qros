@@ -38,8 +38,8 @@ jobs:
 
       - name: 📁 Prepare Deployment Package
         run: |
-          mkdir -p deploy
-          rsync -r --progress . deploy \
+          mkdir -p deploy-package
+          rsync -r --progress . deploy-package \
             --exclude=".git*" \
             --exclude="node_modules" \
             --exclude="tests" \
@@ -53,7 +53,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: qros_build
-          path: deploy/
+          path: deploy-package/
 
   # ================================
   # 2️⃣ Deployment Jobs (Sequential)
@@ -68,12 +68,14 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: qros_build
-          path: deploy/
+          path: deploy-package/
+      - name: Copy Dev Environment File
+        run: cp .env.dev deploy-package/.env
       - name: Deploy via Composite Action
         uses: ./.github/actions/deploy-composite
         with:
           env-name: dev
-          env-file: .env.dev
+          env-file: deploy-package/.env
           ssh-host: ${{ secrets.SSH_HOST }}
           ssh-user: ${{ secrets.SSH_USER }}
           ssh-key: ${{ secrets.SSH_PRIVATE_KEY }}
@@ -91,12 +93,14 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: qros_build
-          path: deploy/
+          path: deploy-package/
+      - name: Copy Test Environment File
+        run: cp .env.test deploy-package/.env
       - name: Deploy via Composite Action
         uses: ./.github/actions/deploy-composite
         with:
           env-name: test
-          env-file: .env.test
+          env-file: deploy-package/.env
           ssh-host: ${{ secrets.SSH_HOST }}
           ssh-user: ${{ secrets.SSH_USER }}
           ssh-key: ${{ secrets.SSH_PRIVATE_KEY }}
@@ -114,12 +118,14 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: qros_build
-          path: deploy/
+          path: deploy-package/
+      - name: Copy Preprod Environment File
+        run: cp .env.preprod deploy-package/.env
       - name: Deploy via Composite Action
         uses: ./.github/actions/deploy-composite
         with:
           env-name: preprod
-          env-file: .env.preprod
+          env-file: deploy-package/.env
           ssh-host: ${{ secrets.SSH_HOST }}
           ssh-user: ${{ secrets.SSH_USER }}
           ssh-key: ${{ secrets.SSH_PRIVATE_KEY }}
@@ -137,12 +143,14 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: qros_build
-          path: deploy/
+          path: deploy-package/
+      - name: Copy Production Environment File
+        run: cp .env.prod deploy-package/.env
       - name: Deploy via Composite Action
         uses: ./.github/actions/deploy-composite
         with:
           env-name: prod
-          env-file: .env.prod
+          env-file: deploy-package/.env
           ssh-host: ${{ secrets.SSH_HOST }}
           ssh-user: ${{ secrets.SSH_USER }}
           ssh-key: ${{ secrets.SSH_PRIVATE_KEY }}

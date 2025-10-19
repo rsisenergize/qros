@@ -1,5 +1,6 @@
 name: "Deploy Composite"
 description: "Reusable deployment step for Laravel apps via SCP + SSH"
+
 inputs:
   env-name:
     description: "Environment name (dev/test/preprod/prod)"
@@ -19,6 +20,7 @@ inputs:
   deploy-path:
     description: "Target deployment path on server"
     required: true
+
 runs:
   using: "composite"
   steps:
@@ -30,24 +32,17 @@ runs:
         echo "${{ inputs.ssh-key }}" > ~/.ssh/id_rsa
         chmod 600 ~/.ssh/id_rsa
 
-    # 2️⃣ Copy environment file to root (local)
-    - name: "Copy Environment File"
-      shell: bash
-      run: |
-        cp "${{ inputs.env-file }}" .env
-        echo "✅ Environment file copied for ${{ inputs.env-name }}"
-
-    # 3️⃣ Upload deployment package — only contents of deploy/
+    # 2️⃣ Upload deployment package via SCP
     - name: "Upload Deployment Package via SCP"
       uses: appleboy/scp-action@v0.1.7
       with:
         host: ${{ inputs.ssh-host }}
         username: ${{ inputs.ssh-user }}
         key: ${{ inputs.ssh-key }}
-        source: "deploy/."          # <-- dot ensures contents are copied directly
+        source: "deploy-package/."       # <- contents only
         target: ${{ inputs.deploy-path }}
 
-    # 4️⃣ Run Laravel commands on server
+    # 3️⃣ Run Laravel commands via SSH
     - name: "Run SSH Laravel Commands"
       shell: bash
       run: |
@@ -60,7 +55,7 @@ runs:
           php artisan down || true
         fi
 
-        # Ensure required directories exist
+        # Ensure directories exist
         mkdir -p bootstrap/cache storage app/public
         chmod -R 775 storage bootstrap/cache || true
 
