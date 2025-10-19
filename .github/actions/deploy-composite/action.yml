@@ -39,7 +39,7 @@ runs:
         host: ${{ inputs.ssh-host }}
         username: ${{ inputs.ssh-user }}
         key: ${{ inputs.ssh-key }}
-        source: "./*"        # Upload everything from local root
+        source: "./deploy-artifact/*"        # Upload everything from local root
         target: ${{ inputs.deploy-path }}
 
     # 3️⃣ Run Laravel commands via SSH
