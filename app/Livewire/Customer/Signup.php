@@ -106,7 +106,10 @@ class Signup extends Component
                 'email' => 'required|email'
             ]);
 
-            $customer = Customer::where('email', $this->email)->first();
+            //$customer = Customer::where('email', $this->email)->first();
+            $customer = Customer::where('email', $this->email)
+            ->where('restaurant_id', $this->restaurant->id)
+            ->first();
         }
 
         if (!$customer && !$this->showSignUpProcess) {
@@ -162,7 +165,10 @@ class Signup extends Component
                 ->where('phone', $this->phone)
                 ->first();
         } else {
-            $customer = Customer::where('email', $this->email)->first();
+            //$customer = Customer::where('email', $this->email)->first();
+            $customer = Customer::where('email', $this->email)
+            ->where('restaurant_id', $this->restaurant->id)
+            ->first();
         }
 
         if ($customer->email_otp != $this->verificationCode) {

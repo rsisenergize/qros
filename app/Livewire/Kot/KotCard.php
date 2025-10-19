@@ -11,6 +11,7 @@ use App\Traits\PrinterSetting;
 use App\Models\KotCancelReason;
 use App\Events\KotUpdated;
 use Jantinnerezo\LivewireAlert\LivewireAlert;
+use App\Enums\OrderStatus;
 
 class KotCard extends Component
 {
@@ -55,6 +56,34 @@ class KotCard extends Component
             ]);
         }
 
+        // Update related order status
+        $order = $kotItem->order;
+
+        if ($order) {
+            switch ($status) {
+                case 'in_kitchen':
+                    $order->order_status = \App\Enums\OrderStatus::CONFIRMED;
+                    break;
+
+                case 'food_ready':
+                    if ($order->order_type === 'pickup') {
+                        $order->order_status = \App\Enums\OrderStatus::READY_FOR_PICKUP;
+                    } else {
+                        $order->order_status = \App\Enums\OrderStatus::PREPARING;
+                    }
+                    break;
+
+                case 'served':
+                    $order->order_status = \App\Enums\OrderStatus::SERVED;
+                    if (in_array($order->order_type, ['pickup', 'delivery'])) {
+                        $order->order_status = \App\Enums\OrderStatus::DELIVERED;
+                    }
+                    break;
+            }
+
+            $order->save();
+        }
+
         $this->dispatch('refreshKots');
     }
 
@@ -64,6 +93,7 @@ class KotCard extends Component
         $kotItem = KotItem::find($itemId);
         $kotItem->status = $status;
         $kotItem->save();
+        $order = $kotItem->kot->order;
 
         $totalItems = KotItem::where('kot_id', $this->kot->id)->count();
 
@@ -84,6 +114,8 @@ class KotCard extends Component
                 // All items are cooking, set KOT status to 'in_kitchen'
                 $this->kot->status = 'in_kitchen';
                 $this->kot->save();
+                $order->order_status = \App\Enums\OrderStatus::CONFIRMED;
+                $order->save();
             } else {
                 // Check if all items are ready, set KOT to food_ready
                 $readyItems = KotItem::where('kot_id', $this->kot->id)->where('status', 'ready')->count();
@@ -91,6 +123,12 @@ class KotCard extends Component
                 if ($totalItems > 0 && $readyItems === $totalItems) {
                     $this->kot->status = 'food_ready';
                     $this->kot->save();
+                    if ($order->order_type === 'pickup') {
+                        $order->order_status = \App\Enums\OrderStatus::READY_FOR_PICKUP;
+                    } else {
+                        $order->order_status = \App\Enums\OrderStatus::PREPARING;
+                    }
+                    $order->save();
                 }
             }
         }
