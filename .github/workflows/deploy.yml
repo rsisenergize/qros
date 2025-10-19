@@ -1,4 +1,4 @@
-name: 🚀 Qros Multi-Environment CI/CD (SCP Deployment for cPanel)
+name: 🚀 Qros Multi-Environment CI/CD
 
 on:
   push:
@@ -6,6 +6,9 @@ on:
       - main
 
 jobs:
+  # ===========================================================
+  # 1️⃣ Build Job
+  # ===========================================================
   build:
     name: 🧱 Build Qros
     runs-on: ubuntu-latest
@@ -52,9 +55,9 @@ jobs:
           name: qros_build
           path: deploy/
 
-# ===========================================================
-# Deployment Jobs
-# ===========================================================
+  # ===========================================================
+  # 2️⃣ Deployment Jobs (Sequential)
+  # ===========================================================
 
   deploy-dev:
     name: 🌱 Deploy to Dev
@@ -62,11 +65,11 @@ jobs:
     needs: build
     environment: dev
     steps:
+      - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
           name: qros_build
           path: deploy/
-      - uses: actions/checkout@v4
       - name: Deploy via Composite Action
         uses: ./.github/actions/deploy-composite
         with:
@@ -85,11 +88,11 @@ jobs:
       name: test
       url: https://test.qros.in
     steps:
+      - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
           name: qros_build
           path: deploy/
-      - uses: actions/checkout@v4
       - name: Deploy via Composite Action
         uses: ./.github/actions/deploy-composite
         with:
@@ -108,11 +111,11 @@ jobs:
       name: preprod
       url: https://preprod.qros.in
     steps:
+      - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
           name: qros_build
           path: deploy/
-      - uses: actions/checkout@v4
       - name: Deploy via Composite Action
         uses: ./.github/actions/deploy-composite
         with:
@@ -131,11 +134,11 @@ jobs:
       name: production
       url: https://qros.in
     steps:
+      - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
           name: qros_build
           path: deploy/
-      - uses: actions/checkout@v4
       - name: Deploy via Composite Action
         uses: ./.github/actions/deploy-composite
         with:

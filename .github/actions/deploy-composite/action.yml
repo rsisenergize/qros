@@ -22,6 +22,7 @@ inputs:
 runs:
   using: "composite"
   steps:
+    # 1️⃣ Setup SSH key for server access
     - name: "Setup SSH Key"
       shell: bash
       run: |
@@ -29,13 +30,15 @@ runs:
         echo "${{ inputs.ssh-key }}" > ~/.ssh/id_rsa
         chmod 600 ~/.ssh/id_rsa
 
+    # 2️⃣ Copy .env file to root of deployment folder
     - name: "Copy Environment File"
       shell: bash
       run: |
-        cp "${{ inputs.env-file }}" deploy/.env
+        cp "${{ inputs.env-file }}" .env
         echo "✅ Environment file copied for ${{ inputs.env-name }}"
 
-    - name: "Upload to Server via SCP"
+    # 3️⃣ Upload deployment package (contents of deploy/)
+    - name: "Upload Deployment Package via SCP"
       uses: appleboy/scp-action@v0.1.7
       with:
         host: ${{ inputs.ssh-host }}
@@ -44,20 +47,24 @@ runs:
         source: "deploy/*"
         target: ${{ inputs.deploy-path }}
 
+    # 4️⃣ Run Laravel commands on server
     - name: "Run SSH Laravel Commands"
       shell: bash
       run: |
         ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa ${{ inputs.ssh-user }}@${{ inputs.ssh-host }} << 'EOF'
         set -e
         cd ${{ inputs.deploy-path }}
-        
+
+        # Maintenance mode only for production
         if [[ "${{ inputs.env-name }}" == "prod" ]]; then
           php artisan down || true
         fi
 
+        # Ensure required directories exist
         mkdir -p bootstrap/cache storage app/public
         chmod -R 775 storage bootstrap/cache || true
 
+        # Laravel setup
         php artisan storage:link || true
         php artisan migrate --force
         php artisan optimize:clear
@@ -65,8 +72,10 @@ runs:
         php artisan route:cache
         php artisan view:cache
 
+        # Bring production back online
         if [[ "${{ inputs.env-name }}" == "prod" ]]; then
           php artisan up || true
         fi
+
         echo "✅ Deployment completed for ${{ inputs.env-name }}"
         EOF
