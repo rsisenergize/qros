@@ -36,10 +36,13 @@ jobs:
             echo "ℹ️ No frontend detected, skipping."
           fi
 
-      - name: 📁 Prepare Deployment Package
+      - name: 📁 Prepare Deployment Artifact
         run: |
-          mkdir -p deploy-package
-          rsync -r --progress . deploy-package \
+          rm -rf deploy-artifact
+          mkdir -p deploy-artifact
+
+          # Copy Laravel files
+          rsync -r --progress . deploy-artifact \
             --exclude=".git*" \
             --exclude="node_modules" \
             --exclude="tests" \
@@ -53,7 +56,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: qros_build
-          path: deploy-package/
+          path: deploy-artifact/*  # <- uploads contents only, no folder
 
   # ================================
   # 2️⃣ Deployment Jobs (Sequential)
@@ -68,14 +71,16 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: qros_build
-          path: deploy-package/
+          path: .   # <- download artifact contents directly into root
+
       - name: Copy Dev Environment File
-        run: cp .env.dev deploy-package/.env
+        run: cp .env.dev .env
+
       - name: Deploy via Composite Action
         uses: ./.github/actions/deploy-composite
         with:
           env-name: dev
-          env-file: deploy-package/.env
+          env-file: .env
           ssh-host: ${{ secrets.SSH_HOST }}
           ssh-user: ${{ secrets.SSH_USER }}
           ssh-key: ${{ secrets.SSH_PRIVATE_KEY }}
@@ -93,14 +98,16 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: qros_build
-          path: deploy-package/
+          path: .
+
       - name: Copy Test Environment File
-        run: cp .env.test deploy-package/.env
+        run: cp .env.test .env
+
       - name: Deploy via Composite Action
         uses: ./.github/actions/deploy-composite
         with:
           env-name: test
-          env-file: deploy-package/.env
+          env-file: .env
           ssh-host: ${{ secrets.SSH_HOST }}
           ssh-user: ${{ secrets.SSH_USER }}
           ssh-key: ${{ secrets.SSH_PRIVATE_KEY }}
@@ -118,14 +125,16 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: qros_build
-          path: deploy-package/
+          path: .
+
       - name: Copy Preprod Environment File
-        run: cp .env.preprod deploy-package/.env
+        run: cp .env.preprod .env
+
       - name: Deploy via Composite Action
         uses: ./.github/actions/deploy-composite
         with:
           env-name: preprod
-          env-file: deploy-package/.env
+          env-file: .env
           ssh-host: ${{ secrets.SSH_HOST }}
           ssh-user: ${{ secrets.SSH_USER }}
           ssh-key: ${{ secrets.SSH_PRIVATE_KEY }}
@@ -143,14 +152,16 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: qros_build
-          path: deploy-package/
+          path: .
+
       - name: Copy Production Environment File
-        run: cp .env.prod deploy-package/.env
+        run: cp .env.prod .env
+
       - name: Deploy via Composite Action
         uses: ./.github/actions/deploy-composite
         with:
           env-name: prod
-          env-file: deploy-package/.env
+          env-file: .env
           ssh-host: ${{ secrets.SSH_HOST }}
           ssh-user: ${{ secrets.SSH_USER }}
           ssh-key: ${{ secrets.SSH_PRIVATE_KEY }}

@@ -6,7 +6,7 @@ inputs:
     description: "Environment name (dev/test/preprod/prod)"
     required: true
   env-file:
-    description: "Path to environment file (.env.dev/.env.test/etc.)"
+    description: "Path to environment file"
     required: true
   ssh-host:
     description: "Server SSH host"
@@ -32,18 +32,18 @@ runs:
         echo "${{ inputs.ssh-key }}" > ~/.ssh/id_rsa
         chmod 600 ~/.ssh/id_rsa
 
-    # 2️⃣ Upload deployment package via SCP
-    - name: "Upload Deployment Package via SCP"
+    # 2️⃣ Upload deployment files via SCP
+    - name: "Upload Deployment Files via SCP"
       uses: appleboy/scp-action@v0.1.7
       with:
         host: ${{ inputs.ssh-host }}
         username: ${{ inputs.ssh-user }}
         key: ${{ inputs.ssh-key }}
-        source: "deploy-package/."       # <- contents only
+        source: "./*"        # Upload everything from local root
         target: ${{ inputs.deploy-path }}
 
     # 3️⃣ Run Laravel commands via SSH
-    - name: "Run SSH Laravel Commands"
+    - name: "Run Laravel Commands on Server"
       shell: bash
       run: |
         ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa ${{ inputs.ssh-user }}@${{ inputs.ssh-host }} << 'EOF'
