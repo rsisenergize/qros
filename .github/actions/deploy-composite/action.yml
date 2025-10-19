@@ -22,7 +22,7 @@ inputs:
 runs:
   using: "composite"
   steps:
-    # 1️⃣ Setup SSH key for server access
+    # 1️⃣ Setup SSH key
     - name: "Setup SSH Key"
       shell: bash
       run: |
@@ -30,21 +30,21 @@ runs:
         echo "${{ inputs.ssh-key }}" > ~/.ssh/id_rsa
         chmod 600 ~/.ssh/id_rsa
 
-    # 2️⃣ Copy .env file to root of deployment folder
+    # 2️⃣ Copy environment file to root (local)
     - name: "Copy Environment File"
       shell: bash
       run: |
         cp "${{ inputs.env-file }}" .env
         echo "✅ Environment file copied for ${{ inputs.env-name }}"
 
-    # 3️⃣ Upload deployment package (contents of deploy/)
+    # 3️⃣ Upload deployment package — only contents of deploy/
     - name: "Upload Deployment Package via SCP"
       uses: appleboy/scp-action@v0.1.7
       with:
         host: ${{ inputs.ssh-host }}
         username: ${{ inputs.ssh-user }}
         key: ${{ inputs.ssh-key }}
-        source: "deploy/*"
+        source: "deploy/."          # <-- dot ensures contents are copied directly
         target: ${{ inputs.deploy-path }}
 
     # 4️⃣ Run Laravel commands on server
