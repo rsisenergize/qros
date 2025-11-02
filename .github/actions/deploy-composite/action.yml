@@ -88,16 +88,24 @@ runs:
         php artisan migrate --force
 
         echo "🧹 Clearing all caches..."
-        php artisan optimize:clear
+        php artisan cache:clear
+        php artisan config:clear
+        php artisan route:clear
+        php artisan view:clear
 
         echo "⚡ Caching configuration..."
         php artisan config:cache
 
-        echo "🛣️ Caching routes..."
-        php artisan route:cache
-
         echo "👁️ Caching views..."
         php artisan view:cache
+        
+        # Only cache routes in production (route caching can cause issues)
+        if [[ "${{ inputs.env-name }}" == "prod" ]]; then
+          echo "🛣️ Caching routes..."
+          php artisan route:cache
+        else
+          echo "ℹ️ Skipping route cache for non-production environment"
+        fi
 
         # Bring production back online
         if [[ "${{ inputs.env-name }}" == "prod" ]]; then
