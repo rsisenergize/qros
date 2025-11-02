@@ -1,5 +1,5 @@
 name: "Deploy Composite"
-description: "Reusable deployment step for Laravel apps via SCP + SSH"
+description: "Reusable deployment step for Laravel apps via SCP + SSH to cPanel"
 
 inputs:
   env-name:
@@ -25,52 +25,92 @@ runs:
   using: "composite"
   steps:
     # 1️⃣ Setup SSH key
-    - name: "Setup SSH Key"
+    - name: "🔐 Setup SSH Key"
       shell: bash
       run: |
         mkdir -p ~/.ssh
         echo "${{ inputs.ssh-key }}" > ~/.ssh/id_rsa
         chmod 600 ~/.ssh/id_rsa
+        ssh-keyscan -H ${{ inputs.ssh-host }} >> ~/.ssh/known_hosts 2>/dev/null || true
 
     # 2️⃣ Upload deployment files via SCP
-    - name: "Upload Deployment Files via SCP"
+    - name: "📤 Upload Deployment Files via SCP"
       uses: appleboy/scp-action@v0.1.7
       with:
         host: ${{ inputs.ssh-host }}
         username: ${{ inputs.ssh-user }}
         key: ${{ inputs.ssh-key }}
-        source: "./deploy-artifact/*"        # Upload everything from local root
+        source: "deploy-artifact/*"
         target: ${{ inputs.deploy-path }}
+        strip_components: 1
+        rm: false
+        overwrite: true
 
     # 3️⃣ Run Laravel commands via SSH
-    - name: "Run Laravel Commands on Server"
+    - name: "⚙️ Run Laravel Commands on Server"
       shell: bash
       run: |
         ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa ${{ inputs.ssh-user }}@${{ inputs.ssh-host }} << 'EOF'
         set -e
+        
+        echo "📍 Navigating to deployment directory..."
         cd ${{ inputs.deploy-path }}
 
         # Maintenance mode only for production
         if [[ "${{ inputs.env-name }}" == "prod" ]]; then
-          php artisan down || true
+          echo "🔒 Enabling maintenance mode..."
+          php artisan down --refresh=15 --retry=60 || true
         fi
 
-        # Ensure directories exist
-        mkdir -p bootstrap/cache storage app/public
-        chmod -R 775 storage bootstrap/cache || true
+        # Ensure directories exist with proper structure
+        echo "📁 Creating required directories..."
+        mkdir -p bootstrap/cache
+        mkdir -p storage/framework/sessions
+        mkdir -p storage/framework/views
+        mkdir -p storage/framework/cache/data
+        mkdir -p storage/logs
+        mkdir -p storage/app/public
+        
+        # Set permissions (adjust if cPanel restricts this)
+        echo "🔧 Setting permissions..."
+        chmod -R 775 storage bootstrap/cache 2>/dev/null || true
+        
+        # Try to set ownership if possible (may fail on cPanel, that's OK)
+        if command -v chown &> /dev/null; then
+          chown -R ${{ inputs.ssh-user }}:${{ inputs.ssh-user }} storage bootstrap/cache 2>/dev/null || true
+        fi
 
-        # Laravel setup
+        # Laravel setup commands
+        echo "🔗 Creating storage link..."
         php artisan storage:link || true
+
+        echo "🗄️ Running database migrations..."
         php artisan migrate --force
+
+        echo "🧹 Clearing all caches..."
         php artisan optimize:clear
+
+        echo "⚡ Caching configuration..."
         php artisan config:cache
+
+        echo "🛣️ Caching routes..."
         php artisan route:cache
+
+        echo "👁️ Caching views..."
         php artisan view:cache
 
         # Bring production back online
         if [[ "${{ inputs.env-name }}" == "prod" ]]; then
+          echo "🔓 Disabling maintenance mode..."
           php artisan up || true
         fi
 
-        echo "✅ Deployment completed for ${{ inputs.env-name }}"
+        echo "✅ Deployment completed successfully for ${{ inputs.env-name }} environment"
         EOF
+
+    # 4️⃣ Cleanup SSH key
+    - name: "🧹 Cleanup SSH Key"
+      shell: bash
+      if: always()
+      run: |
+        rm -f ~/.ssh/id_rsa

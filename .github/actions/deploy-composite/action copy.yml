@@ -1,0 +1,76 @@
+name: "Deploy Composite"
+description: "Reusable deployment step for Laravel apps via SCP + SSH"
+
+inputs:
+  env-name:
+    description: "Environment name (dev/test/preprod/prod)"
+    required: true
+  env-file:
+    description: "Path to environment file"
+    required: true
+  ssh-host:
+    description: "Server SSH host"
+    required: true
+  ssh-user:
+    description: "Server SSH username"
+    required: true
+  ssh-key:
+    description: "Private SSH key"
+    required: true
+  deploy-path:
+    description: "Target deployment path on server"
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    # 1️⃣ Setup SSH key
+    - name: "Setup SSH Key"
+      shell: bash
+      run: |
+        mkdir -p ~/.ssh
+        echo "${{ inputs.ssh-key }}" > ~/.ssh/id_rsa
+        chmod 600 ~/.ssh/id_rsa
+
+    # 2️⃣ Upload deployment files via SCP
+    - name: "Upload Deployment Files via SCP"
+      uses: appleboy/scp-action@v0.1.7
+      with:
+        host: ${{ inputs.ssh-host }}
+        username: ${{ inputs.ssh-user }}
+        key: ${{ inputs.ssh-key }}
+        source: "./deploy-artifact/*"        # Upload everything from local root
+        target: ${{ inputs.deploy-path }}
+
+    # 3️⃣ Run Laravel commands via SSH
+    - name: "Run Laravel Commands on Server"
+      shell: bash
+      run: |
+        ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa ${{ inputs.ssh-user }}@${{ inputs.ssh-host }} << 'EOF'
+        set -e
+        cd ${{ inputs.deploy-path }}
+
+        # Maintenance mode only for production
+        if [[ "${{ inputs.env-name }}" == "prod" ]]; then
+          php artisan down || true
+        fi
+
+        # Ensure directories exist
+        mkdir -p bootstrap/cache storage app/public
+        chmod -R 775 storage bootstrap/cache || true
+
+        # Laravel setup
+        php artisan storage:link || true
+        php artisan migrate --force
+        php artisan optimize:clear
+        php artisan config:cache
+        php artisan route:cache
+        php artisan view:cache
+
+        # Bring production back online
+        if [[ "${{ inputs.env-name }}" == "prod" ]]; then
+          php artisan up || true
+        fi
+
+        echo "✅ Deployment completed for ${{ inputs.env-name }}"
+        EOF

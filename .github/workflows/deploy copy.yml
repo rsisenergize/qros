@@ -56,7 +56,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: qros_build
-          path: deploy-artifact
+          path: deploy-artifact/*  # <- uploads contents only, no folder
 
   # ================================
   # 2️⃣ Deployment Jobs (Sequential)
@@ -68,14 +68,13 @@ jobs:
     environment: dev
     steps:
       - uses: actions/checkout@v4
-      
       - uses: actions/download-artifact@v4
         with:
           name: qros_build
-          path: deploy-artifact
+          path: .   # <- download artifact contents directly into root
 
       - name: Copy Dev Environment File
-        run: cp .env.dev deploy-artifact/.env
+        run: cp .env.dev .env
 
       - name: Deploy via Composite Action
         uses: ./.github/actions/deploy-composite
@@ -96,14 +95,13 @@ jobs:
       url: https://test.qros.in
     steps:
       - uses: actions/checkout@v4
-      
       - uses: actions/download-artifact@v4
         with:
           name: qros_build
-          path: deploy-artifact
+          path: .
 
       - name: Copy Test Environment File
-        run: cp .env.test deploy-artifact/.env
+        run: cp .env.test .env
 
       - name: Deploy via Composite Action
         uses: ./.github/actions/deploy-composite
@@ -124,14 +122,13 @@ jobs:
       url: https://preprod.qros.in
     steps:
       - uses: actions/checkout@v4
-      
       - uses: actions/download-artifact@v4
         with:
           name: qros_build
-          path: deploy-artifact
+          path: .
 
       - name: Copy Preprod Environment File
-        run: cp .env.preprod deploy-artifact/.env
+        run: cp .env.preprod .env
 
       - name: Deploy via Composite Action
         uses: ./.github/actions/deploy-composite
@@ -152,14 +149,13 @@ jobs:
       url: https://qros.in
     steps:
       - uses: actions/checkout@v4
-      
       - uses: actions/download-artifact@v4
         with:
           name: qros_build
-          path: deploy-artifact
+          path: .
 
       - name: Copy Production Environment File
-        run: cp .env.prod deploy-artifact/.env
+        run: cp .env.prod .env
 
       - name: Deploy via Composite Action
         uses: ./.github/actions/deploy-composite
