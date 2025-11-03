@@ -28,7 +28,7 @@
                                 </g>
                             </svg>
                         @else
-                            {{ $order->table->table_code ?? '--' }}
+                            {{ $order->table?->table_code ?? '--' }}
                         @endif
                     </h3>
                 </div>
@@ -40,6 +40,15 @@
                     <div class="font-medium text-gray-600 text-sm dark:text-gray-400">
                         {{ $order->show_formatted_order_number }}
                     </div>
+                    @if($order->custom_order_type_name)
+                        <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                            {{ $order->custom_order_type_name }}
+                        </div>
+                    @elseif($order->orderType)
+                        <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                            {{ $order->orderType->order_type_name }}
+                        </div>
+                    @endif
                 </div>
             </div>
             <div class="ltr:text-right rtl:text-left">
@@ -96,7 +105,7 @@
                 <div class="flex flex-col gap-1 text-xs text-gray-600 dark:text-gray-400">
                     <div class="flex items-center gap-1">
                         <span class="font-semibold">@lang('modules.order.pickupDate')</span>
-                        <span>{{ \Illuminate\Support\Carbon::parse($order->pickup_date)->timezone(timezone())->translatedFormat('M d, Y h:i A') }}</span>
+                        <span>{{ \Illuminate\Support\Carbon::parse($order->pickup_date)->translatedFormat('M d, Y h:i A') }}</span>
                     </div>
                     <div class="flex items-center gap-1">
                         <span class="font-semibold">@lang('modules.order.orderDate')</span>

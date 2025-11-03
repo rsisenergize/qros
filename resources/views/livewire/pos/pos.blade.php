@@ -1,5 +1,7 @@
 <div>
-
+    @if(!$orderTypeId)
+    @livewire('forms.OrderTypeSelection')
+    @endif
     <div class="flex-grow lg:flex h-auto">
 
 
@@ -21,7 +23,11 @@
 
         <x-slot name="content">
             @if ($menuItem)
-            @livewire('pos.itemVariations', ['menuItem' => $menuItem], key(str()->random(50)))
+            @livewire('pos.itemVariations', [
+                'menuItem' => $menuItem, 
+                'orderTypeId' => $orderTypeId,
+                'deliveryAppId' => $this->normalizedDeliveryAppId
+            ], key(str()->random(50)))
             @endif
         </x-slot>
 
@@ -129,7 +135,11 @@
 
         <x-slot name="content">
             @if ($selectedModifierItem)
-                @livewire('pos.itemModifiers', ['menuItemId' => $selectedModifierItem], key(str()->random(50)))
+                @livewire('pos.itemModifiers', [
+                    'menuItemId' => $selectedModifierItem,
+                    'orderTypeId' => $orderTypeId,
+                    'deliveryAppId' => $selectedDeliveryApp
+                ], key(str()->random(50)))
             @endif
         </x-slot>
     </x-dialog-modal>

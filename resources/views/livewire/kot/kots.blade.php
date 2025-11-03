@@ -92,7 +92,7 @@
                 'grid grid-cols-1 gap-2 w-full lg:w-auto',
                 'sm:grid-cols-4' => $kotSettings->default_status == 'pending',
                 'sm:grid-cols-3' => $kotSettings->default_status == 'cooking',
-            ])>
+                ])>
                 @if ($kotSettings->default_status == 'pending')
                     <div wire:click="$set('filterOrders', 'pending_confirmation')" @class([
                         'whitespace-nowrap items-center font-medium
@@ -105,6 +105,7 @@
                         @lang('modules.reservation.Pending') ({{ $pendingConfirmationCount }})
                     </div>
                 @endif
+
                 <div wire:click="$set('filterOrders', 'in_kitchen')" @class([
                     'whitespace-nowrap items-center font-medium
                                                     cursor-pointer p-2 text-center rounded-md text-sm border hover:text-gray-900 bg-white
@@ -147,7 +148,7 @@
             <div class="space-y-4">
                 <div class="grid sm:grid-cols-3 2xl:grid-cols-4 gap-3 sm:gap-4">
                     @foreach ($kots as $item)
-                        @livewire('kot.kot-card', ['kot' => $item, 'kotSettings' => $kotSettings, 'cancelReasons' => $cancelReasons, 'kotPlace' => $kotPlace, 'showAllKitchens' => $showAllKitchens], key('kot-' . $item->id . microtime()))
+                        @livewire('kot.kot-card', ['kot' => $item, 'kotSettings' => $kotSettings, 'cancelReasons' => $cancelReasons, 'kotPlace' => $kotPlace, 'showAllKitchens' => $showAllKitchens], key('kot-' . $item->id . '-' . $item->updated_at->timestamp))
                     @endforeach
                 </div>
             </div>
@@ -198,7 +199,7 @@
 
                     <!-- Custom Reason Textarea -->
                     <div class="w-full">
-                        <textarea wire:model.defer="cancelReasonText" id="cancelReasonText" rows="4"
+                        <textarea wire:model="cancelReasonText" id="cancelReasonText" rows="4"
                             class="block w-full px-4 py-3 transition-all duration-200 border-2 border-gray-300 shadow-sm resize-none rounded-xl dark:border-gray-600 focus:ring-2 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
                             placeholder="@lang('modules.settings.enterCancelReason')"></textarea>
                     </div>
@@ -216,6 +217,79 @@
                 </x-danger-button>
             </x-slot>
         </x-confirmation-modal>
+
+        <!-- Delete KOT Item Modal -->
+        <x-confirmation-modal wire:model="confirmDeleteKotItemModal" max-width="xl">
+
+            <x-slot name="title">
+                <div>
+                    <h3 class="text-xl font-bold text-gray-900 dark:text-white">
+                        @lang('modules.order.cancelKotItem')
+                        @if($this->selectedKotItem)
+                            ({{ $this->selectedKotItem->menuItem->item_name ?? 'N/A' }})
+                        @endif
+                    </h3>
+                    <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">@lang('modules.order.actionCannotBeUndone')</p>
+                </div>
+            </x-slot>
+
+            <x-slot name="content">
+                <div class="flex flex-col w-full space-y-6">
+                    <!-- Warning Message -->
+                    <x-alert type="warning" class="w-full mb-0">
+                        <div class="flex items-start gap-3">
+                            <svg class="flex-shrink-0 mt-0.5 w-5 h-5 text-amber-500" fill="none"
+                                stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                            </svg>
+                            <div>
+                                <p class="text-sm font-semibold text-amber-800 dark:text-amber-200">@lang('modules.order.cancelKotItemMessage')
+                                </p>
+                                <p class="mt-1 text-sm text-amber-700 dark:text-amber-300">@lang('modules.order.pleaseSelectReasonForCancellation')</p>
+                            </div>
+                        </div>
+                    </x-alert>
+
+                    <!-- Reason Selection -->
+                    <div class="w-full space-y-4">
+                        <div>
+                            <x-label for="cancelItemReason" value="{{ __('modules.settings.selectCancelReason') }}"
+                                class="text-sm font-medium text-gray-700 dark:text-gray-200 mb-2" />
+                            <x-select id="cancelItemReason" class="block w-full" wire:model.live="cancelItemReason" onchange="console.log('Select changed:', this.value); @this.set('cancelItemReason', this.value);">
+                                <option value="">{{ __('modules.settings.selectCancelReason') }}</option>
+                                @foreach ($cancelReasons as $reason)
+                                    <option value="{{ $reason->id }}">{{ $reason->reason }}</option>
+                                @endforeach
+                            </x-select>
+                            <x-input-error for="cancelItemReason" class="mt-2" />
+                        </div>
+
+                        <!-- Custom Reason Textarea -->
+                        <div>
+                            <x-label for="cancelItemReasonText" value="{{ __('modules.settings.enterCancelReason') }}"
+                                class="text-sm font-medium text-gray-700 dark:text-gray-200 mb-2" />
+                            <textarea wire:model.live="cancelItemReasonText" id="cancelItemReasonText" rows="4"
+                                class="block w-full px-4 py-3 transition-all duration-200 border-2 border-gray-300 shadow-sm resize-none rounded-xl dark:border-gray-600 focus:ring-2 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                                placeholder="@lang('modules.settings.enterCancelReason')"
+                                oninput="console.log('Textarea input:', this.value); @this.set('cancelItemReasonText', this.value);"></textarea>
+                        </div>
+                    </div>
+                </div>
+            </x-slot>
+
+            <x-slot name="footer">
+                <x-secondary-button wire:click="$set('confirmDeleteKotItemModal', false)" wire:loading.attr="disabled">
+                    {{ __('app.cancel') }}
+                </x-secondary-button>
+
+                <x-danger-button class="ml-3" wire:click="deleteKotItem({{ $selectedCancelKotItemId }})"
+                    wire:loading.attr="disabled">
+                    @lang('modules.order.cancelKotItem')
+                </x-danger-button>
+            </x-slot>
+        </x-confirmation-modal>
+
     </div>
 
     @push('scripts')
@@ -245,4 +319,6 @@
             });
         </script>
     @endif
+
+
 @endpush

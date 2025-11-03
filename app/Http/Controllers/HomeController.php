@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Models\Module;
 use App\Models\Package;
 use App\Enums\PackageType;
-use App\Livewire\LandingSite\FooterSetting;
 use App\Models\Contact;
 use App\Models\CustomMenu;
 use App\Models\FrontDetail;
@@ -21,15 +20,16 @@ class HomeController extends Controller
 {
 
     use AppBoot;
-    
+
     protected $language;
-    
+
     public function __construct()
     {
         parent::__construct();
-    
+
         $locale = session('customer_locale') ?? (global_setting()->locale ?? 'en');
         $languageSetting = LanguageSetting::where('language_code', $locale)->first();
+
         if (!$languageSetting) {
             $locale = 'en';
             $languageSetting = LanguageSetting::where('language_code', 'en')->first();
@@ -38,11 +38,11 @@ class HomeController extends Controller
         if (!session()->has('customer_is_rtl')) {
             session(['customer_is_rtl' => $languageSetting->is_rtl == 1]);
         }
-        
-        app()->setLocale($locale); 
+
+        app()->setLocale($locale);
         $this->language = $locale;
     }
-    
+
     public function changeLocale($locale)
     {
         // Validate if the locale exists in language settings
@@ -102,14 +102,11 @@ class HomeController extends Controller
         $frontFaqs = FrontFaq::where('language_setting_id', $languageId)->get();
         $frontContact = Contact::where('language_setting_id', $languageId)->first();
 
-        if($global->landing_type == 'static'){
+        if ($global->landing_type == 'static') {
             return view('landing.index', compact('packages', 'AllModulesWithFeature', 'trialPackage', 'monthlyPackages', 'annualPackages', 'lifetimePackages'));
-
-        }else {
-            return view('landing.dynamic-index', compact('packages', 'AllModulesWithFeature', 'trialPackage', 'monthlyPackages', 'annualPackages', 'lifetimePackages', 'customMenu','frontDetails','frontFeatures','frontReviews','frontFaqs','frontContact'));
-
         }
 
+        return view('landing.dynamic-index', compact('packages', 'AllModulesWithFeature', 'trialPackage', 'monthlyPackages', 'annualPackages', 'lifetimePackages', 'customMenu', 'frontDetails', 'frontFeatures', 'frontReviews', 'frontFaqs', 'frontContact'));
     }
 
     public function signup()
@@ -131,10 +128,10 @@ class HomeController extends Controller
     {
         $hash = request()->query('hash', '');
 
-        if(!empty($hash)){
-             $slug = 'restaurant/' . $hash . '/';
-        }else {
-             $slug = 'super-admin/';
+        if (!empty($hash)) {
+            $slug = 'restaurant/' . $hash . '/';
+        } else {
+            $slug = 'super-admin/';
         }
 
         $relativeUrl = urldecode(request()->query('url', ''));
@@ -150,6 +147,7 @@ class HomeController extends Controller
         $globalSetting = global_setting();
 
         $restaurant = Restaurant::where('hash', $hash)->first();
+
         return response()->json([
             'name' => $restaurant ? $restaurant->name : $globalSetting->name,
             'short_name' => $restaurant ? $restaurant->name : $globalSetting->name,
@@ -172,5 +170,4 @@ class HomeController extends Controller
             ]
         ]);
     }
-
 }

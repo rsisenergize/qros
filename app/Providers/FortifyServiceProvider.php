@@ -34,7 +34,7 @@ class FortifyServiceProvider extends ServiceProvider
 
             public function toResponse($request)
             {
-                
+
                 session(['user' => User::find(user()->id)]);
 
                 if (user()->hasRole('Admin_' . user()->restaurant_id)) {

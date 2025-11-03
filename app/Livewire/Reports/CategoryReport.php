@@ -23,10 +23,12 @@ class CategoryReport extends Component
         abort_if(!in_array('Report', restaurant_modules()), 403);
         abort_if((!user_can('Show Reports')), 403);
 
+        $tz = timezone();
+        
         // Load date range type from cookie
         $this->dateRangeType = request()->cookie('category_report_date_range_type', 'currentWeek');
-        $this->startDate = now()->startOfWeek()->format('m/d/Y');
-        $this->endDate = now()->endOfWeek()->format('m/d/Y');
+        $this->startDate = Carbon::now($tz)->startOfWeek()->format('m/d/Y');
+        $this->endDate = Carbon::now($tz)->endOfWeek()->format('m/d/Y');
     }
 
     public function updatedDateRangeType($value)
@@ -36,45 +38,47 @@ class CategoryReport extends Component
 
     public function setDateRange()
     {
+        $tz = timezone();
+        
         switch ($this->dateRangeType) {
         case 'today':
-            $this->startDate = now()->startOfDay()->format('m/d/Y');
-            $this->endDate = now()->startOfDay()->format('m/d/Y');
+            $this->startDate = Carbon::now($tz)->startOfDay()->format('m/d/Y');
+            $this->endDate = Carbon::now($tz)->startOfDay()->format('m/d/Y');
             break;
 
         case 'lastWeek':
-            $this->startDate = now()->subWeek()->startOfWeek()->format('m/d/Y');
-            $this->endDate = now()->subWeek()->endOfWeek()->format('m/d/Y');
+            $this->startDate = Carbon::now($tz)->subWeek()->startOfWeek()->format('m/d/Y');
+            $this->endDate = Carbon::now($tz)->subWeek()->endOfWeek()->format('m/d/Y');
             break;
 
         case 'last7Days':
-            $this->startDate = now()->subDays(7)->format('m/d/Y');
-            $this->endDate = now()->startOfDay()->format('m/d/Y');
+            $this->startDate = Carbon::now($tz)->subDays(7)->format('m/d/Y');
+            $this->endDate = Carbon::now($tz)->startOfDay()->format('m/d/Y');
             break;
 
         case 'currentMonth':
-            $this->startDate = now()->startOfMonth()->format('m/d/Y');
-            $this->endDate = now()->startOfDay()->format('m/d/Y');
+            $this->startDate = Carbon::now($tz)->startOfMonth()->format('m/d/Y');
+            $this->endDate = Carbon::now($tz)->startOfDay()->format('m/d/Y');
             break;
 
         case 'lastMonth':
-            $this->startDate = now()->subMonth()->startOfMonth()->format('m/d/Y');
-            $this->endDate = now()->subMonth()->endOfMonth()->format('m/d/Y');
+            $this->startDate = Carbon::now($tz)->subMonth()->startOfMonth()->format('m/d/Y');
+            $this->endDate = Carbon::now($tz)->subMonth()->endOfMonth()->format('m/d/Y');
             break;
 
         case 'currentYear':
-            $this->startDate = now()->startOfYear()->format('m/d/Y');
-            $this->endDate = now()->startOfDay()->format('m/d/Y');
+            $this->startDate = Carbon::now($tz)->startOfYear()->format('m/d/Y');
+            $this->endDate = Carbon::now($tz)->startOfDay()->format('m/d/Y');
             break;
 
         case 'lastYear':
-            $this->startDate = now()->subYear()->startOfYear()->format('m/d/Y');
-            $this->endDate = now()->subYear()->endOfYear()->format('m/d/Y');
+            $this->startDate = Carbon::now($tz)->subYear()->startOfYear()->format('m/d/Y');
+            $this->endDate = Carbon::now($tz)->subYear()->endOfYear()->format('m/d/Y');
             break;
 
         default:
-            $this->startDate = now()->startOfWeek()->format('m/d/Y');
-            $this->endDate = now()->endOfWeek()->format('m/d/Y');
+            $this->startDate = Carbon::now($tz)->startOfWeek()->format('m/d/Y');
+            $this->endDate = Carbon::now($tz)->endOfWeek()->format('m/d/Y');
             break;
         }
 

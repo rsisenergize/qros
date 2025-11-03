@@ -1,21 +1,6 @@
 <div
     class="flex flex-col h-auto min-h-screen px-2 py-4 pr-4 bg-white border-l lg:w-6/12 dark:border-gray-700 dark:bg-gray-800">
     <div>
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 mb-4">
-            @foreach ($orderTypes as $type)
-                <div @class([
-                    'flex-1 min-w-[110px] flex items-center justify-center gap-2 px-1 rounded-lg border transition-colors cursor-pointer text-sm font-medium',
-                    'border-gray-200 bg-white text-gray-900 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200 hover:bg-skin-base/10 dark:hover:bg-skin-base/20',
-                ]) wire:click="$set('orderType', '{{ $type->type }}')">
-                    <input id="order-type-{{ $type->slug }}" type="radio" wire:model.live="orderTypeId" value="{{ $type->id }}"
-                        class="w-4 h-4 accent-skin-base border-gray-300 focus:ring-skin-base dark:focus:ring-skin-base dark:bg-gray-600 dark:border-gray-500">
-                    <label for="order-type-{{ $type->slug }}"
-                        class="w-full py-2 text-sm font-medium text-gray-900 dark:text-gray-300 cursor-pointer select-none">
-                        {{ Str::headline($type->order_type_name) }}
-                    </label>
-                </div>
-            @endforeach
-        </div>
 
         <div class="flex items-center justify-between mt-1 mb-2">
             <div class="inline-flex items-center gap-1 py-2 font-medium dark:text-neutral-200">
@@ -274,6 +259,18 @@
         @endif
 
         @foreach ($kotList as $kot)
+            @php
+                // Only show KOT if it has non-cancelled items in the orderItemList
+                $hasItems = false;
+                foreach ($orderItemList as $key => $item) {
+                    if (strpos($key, 'kot_' . $kot->id) !== false) {
+                        $hasItems = true;
+                        break;
+                    }
+                }
+            @endphp
+
+            @if ($hasItems)
             <div class="flex justify-between p-2 text-xs font-medium text-gray-500 bg-gray-100 dark:bg-gray-700">
                 <div>@lang('menu.kot') #{{ $kot->kot_number }}</div>
 
@@ -389,13 +386,14 @@
                     </tbody>
                 </table>
             </div>
+            @endif
         @endforeach
 
     </div>
 
     <div>
         <div class="w-full h-auto p-4 mt-3 space-y-4 text-center rounded select-none bg-gray-50 dark:bg-gray-700">
-            @if (count($orderItemList) > 0 && user_can('Update Order'))
+            @if (count($orderItemList) > 0 && user_can('Update Order') && user_can('Add Discount on POS'))
                 <div class="text-left">
                     <x-secondary-button wire:click="showAddDiscount">
                         <svg class="w-5 h-5 text-current me-1" width="24" height="24" viewBox="0 0 16 16"

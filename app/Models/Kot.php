@@ -73,9 +73,9 @@ class Kot extends BaseModel
         $endOfDay = \Illuminate\Support\Carbon::now($tz)->endOfDay();
 
         $lastKotWithToken = self::where('branch_id', $branchId)
-            ->where('order_type_id', $orderTypeId)
             ->whereNotNull('token_number')
-            ->whereBetween('created_at', [$startOfDay, $endOfDay])
+            ->where('created_at', '>=', $startOfDay)
+            ->where('created_at', '<=', $endOfDay)
             ->orderByDesc('id')
             ->first();
 

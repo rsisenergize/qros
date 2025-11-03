@@ -11,6 +11,7 @@ use App\Imports\MenuItemImport;
 use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Support\Facades\Storage;
 use Jantinnerezo\LivewireAlert\LivewireAlert;
+use PhpOffice\PhpSpreadsheet\IOFactory;
 
 class BulkImportPage extends Component
 {
@@ -138,7 +139,15 @@ class BulkImportPage extends Component
     private function parseCsvFile()
     {
         $filePath = $this->uploadFile->getRealPath();
+        $extension = strtolower($this->uploadFile->getClientOriginalExtension());
 
+        // Handle Excel files
+        if (in_array($extension, ['xlsx', 'xls'])) {
+            $this->parseExcelFile($filePath);
+            return;
+        }
+
+        // Handle CSV files
         // Try to detect the file encoding
         $content = file_get_contents($filePath);
         $encoding = mb_detect_encoding($content, ['UTF-8', 'ISO-8859-1', 'Windows-1252'], true);
@@ -158,6 +167,7 @@ class BulkImportPage extends Component
         // Read headers
         $this->csvHeaders = fgetcsv($handle);
         if (!$this->csvHeaders) {
+            fclose($handle);
             throw new \Exception('Could not read CSV headers.');
         }
 
@@ -169,15 +179,90 @@ class BulkImportPage extends Component
         // Initialize column mapping with default values
         $this->initializeColumnMapping();
 
-        // Read all rows for preview
+        // Read all rows for preview (limit to 10 rows for preview)
         $this->previewRows = [];
         $this->totalRows = 1; // Header row
-        while (($row = fgetcsv($handle)) !== false) {
+        $previewLimit = 10;
+        while (($row = fgetcsv($handle)) !== false && count($this->previewRows) < $previewLimit) {
             $this->previewRows[] = $row;
             $this->totalRows++;
         }
 
+        // Count remaining rows
+        while (($row = fgetcsv($handle)) !== false) {
+            $this->totalRows++;
+        }
+
         fclose($handle);
+    }
+
+    private function parseExcelFile($filePath)
+    {
+        try {
+            $spreadsheet = IOFactory::load($filePath);
+            $worksheet = $spreadsheet->getActiveSheet();
+            $highestRow = $worksheet->getHighestRow();
+            $highestColumn = $worksheet->getHighestColumn();
+
+            // Find the last non-empty column
+            $lastColIndex = 0;
+            for ($col = 'A'; $col <= $highestColumn; $col++) {
+                $cellValue = $worksheet->getCell($col . '1')->getValue();
+                if (!empty(trim($cellValue ?? ''))) {
+                    $lastColIndex++;
+                }
+            }
+
+            // Get headers from first row
+            $this->csvHeaders = [];
+            $colIndex = 0;
+            for ($col = 'A'; $col <= $highestColumn && $colIndex < $lastColIndex; $col++) {
+                $cellValue = $worksheet->getCell($col . '1')->getValue();
+                $headerValue = trim($cellValue ?? '');
+                $this->csvHeaders[] = $headerValue;
+                $colIndex++;
+            }
+
+            // Remove empty headers at the end
+            while (!empty($this->csvHeaders) && empty(end($this->csvHeaders))) {
+                array_pop($this->csvHeaders);
+            }
+
+            if (empty($this->csvHeaders)) {
+                throw new \Exception('Could not read Excel headers.');
+            }
+
+            // Initialize column mapping with default values
+            $this->initializeColumnMapping();
+
+            // Read preview rows (limit to 10 rows)
+            $this->previewRows = [];
+            $this->totalRows = 1; // Header row
+            $previewLimit = 10;
+
+            for ($row = 2; $row <= $highestRow && count($this->previewRows) < $previewLimit; $row++) {
+                $rowData = [];
+                $colIndex = 0;
+
+                // Read only the columns that have headers
+                for ($col = 'A'; $col <= $highestColumn && $colIndex < count($this->csvHeaders); $col++) {
+                    $cellValue = $worksheet->getCell($col . $row)->getValue();
+                    $rowData[] = trim($cellValue ?? '');
+                    $colIndex++;
+                }
+
+                $this->previewRows[] = $rowData;
+                $this->totalRows++;
+            }
+
+            // Count remaining rows
+            for ($row = count($this->previewRows) + 2; $row <= $highestRow; $row++) {
+                $this->totalRows++;
+            }
+
+        } catch (\Exception $e) {
+            throw new \Exception('Could not parse Excel file: ' . $e->getMessage());
+        }
     }
 
     private function initializeColumnMapping()

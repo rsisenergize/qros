@@ -44,6 +44,7 @@ use Jantinnerezo\LivewireAlert\LivewireAlert;
 use App\Events\OrderUpdated;
 use App\Traits\PrinterSetting;
 use App\Models\KotPlace;
+use App\Models\Printer;
 
 class Cart extends Component
 {
@@ -86,6 +87,10 @@ class Cart extends Component
     public $restaurant;
     public $shopBranch;
     public $orderType;
+    public $orderTypeId; // Add orderTypeId for pricing context
+    public $orderTypeSlug; // Add orderTypeSlug
+    public $showOrderTypeModal = false; // Modal for order type selection
+    public $cameFromQR = false; // Track if user came from QR code
     public $payNow = false;
     public $offline_payment_status;
     public $menuId;
@@ -157,12 +162,39 @@ class Cart extends Component
             abort(404);
         }
 
+        // Detect if user came from QR code
+        $this->cameFromQR = request()->query('hash') === $this->restaurant->hash ||
+                           request()->boolean('from_qr') ||
+                           !is_null($this->tableID);
+
         $this->paymentGateway = PaymentGatewayCredential::withoutGlobalScopes()->where('restaurant_id', $this->restaurant->id)->first();
         $this->taxes = Tax::withoutGlobalScopes()->where('restaurant_id', $this->restaurant->id)->get();
         $this->customer = customer();
-        $this->razorpayStatus = (bool)$this->paymentGateway->razorpay_status;
-        $this->stripeStatus = (bool)$this->paymentGateway->stripe_status;
-        $this->orderType = $this->restaurant->allow_dine_in_orders ? 'dine_in' : ($this->restaurant->allow_customer_delivery_orders ? 'delivery' : 'pickup');
+        $this->razorpayStatus = (bool)($this->paymentGateway->razorpay_status ?? false);
+        $this->stripeStatus = (bool)($this->paymentGateway->stripe_status ?? false);
+
+        // If came from QR code, auto-set to dine_in and don't show modal
+        if ($this->cameFromQR) {
+            $this->orderType = 'dine_in';
+            $this->setDefaultOrderType();
+            $this->showOrderTypeModal = false;
+        } else {
+            // For regular users, determine default order type but show modal first
+            $this->orderType = $this->restaurant->allow_dine_in_orders ? 'dine_in' : ($this->restaurant->allow_customer_delivery_orders ? 'delivery' : 'pickup');
+
+            // Check if we have multiple order types to show modal
+            $availableOrderTypes = OrderType::where('branch_id', $this->shopBranch->id)
+                ->where('is_active', true)
+                ->count();
+
+            // Show modal if more than one order type available
+            $this->showOrderTypeModal = $availableOrderTypes > 1;
+
+            // If only one order type, set it automatically
+            if ($availableOrderTypes == 1) {
+                $this->setDefaultOrderType();
+            }
+        }
 
         if (request()->has('current_order')) {
             $this->orderID = request()->get('current_order');
@@ -175,7 +207,11 @@ class Cart extends Component
         // Fetch QR code image from database
         $this->qrCodeImage = $this->restaurant->qr_code_image;
 
-        $this->updatedOrderType($this->orderType);
+        // Only call these if order type is already selected
+        if (!$this->showOrderTypeModal) {
+            $this->updatedOrderType($this->orderType);
+        }
+
         $this->taxMode = $this->restaurant->tax_mode ?? 'order';
 
         $this->pickupRange = restaurant()->pickup_days_range ?? 1;
@@ -187,6 +223,121 @@ class Cart extends Component
 
         // Initialize header settings
         $this->initializeHeaderSettings();
+    }
+
+    /**
+     * Set default order type and ID
+     */
+    private function setDefaultOrderType()
+    {
+        // Get default order type for the current order type
+        $orderTypeModel = OrderType::where('branch_id', $this->shopBranch->id)
+            ->where('is_active', true)
+            ->first();
+
+        if ($orderTypeModel) {
+            $this->orderTypeId = $orderTypeModel->id;
+            $this->orderTypeSlug = $orderTypeModel->slug;
+        }
+    }
+
+    /**
+     * Handle order type change and update pricing context
+     */
+    public function updatedOrderTypeId($value)
+    {
+        dd($value);
+        if (!$value) {
+            return;
+        }
+
+        // Get the order type information
+        $orderType = OrderType::find($value);
+
+        if (!$orderType) {
+            return;
+        }
+
+        // Update the local variables
+        $this->orderType = $orderType->type;
+        $this->orderTypeSlug = $orderType->slug;
+
+        // Get extra charges for this order type
+        $mainExtraCharges = RestaurantCharge::withoutGlobalScopes()
+            ->whereJsonContains('order_types', $this->orderTypeSlug)
+            ->where('is_enabled', true)
+            ->where('restaurant_id', $this->restaurant->id)
+            ->get();
+
+        // Update extra charges
+        if (!$this->orderID) {
+            // Only clear delivery-related fields if the order type is not delivery
+            if ($this->orderTypeSlug !== 'delivery') {
+                $this->addressLat = null;
+                $this->addressLng = null;
+                $this->deliveryAddress = null;
+                $this->deliveryFee = null;
+            }
+
+            $this->calculateMaxPreparationTime();
+            $this->extraCharges = $mainExtraCharges;
+        } else {
+            // For existing orders, keep existing charges if order type is unchanged
+            $orderTypeFromOrder = $this->order->order_type_id
+                ? (OrderType::where('id', $this->order->order_type_id)->value('slug') ?? $this->order->order_type)
+                : $this->order->order_type;
+
+            $this->extraCharges = $orderTypeFromOrder === $this->orderTypeSlug ? $this->order->extraCharges : $mainExtraCharges;
+        }
+
+        // Recalculate prices for all items in cart when order type changes
+        foreach ($this->orderItemList ?? [] as $key => $item) {
+            if ($this->orderTypeId) {
+                $item->setPriceContext($this->orderTypeId, null);
+                if (isset($this->orderItemVariation[$key])) {
+                    $this->orderItemVariation[$key]->setPriceContext($this->orderTypeId, null);
+                }
+            }
+
+            // Recalculate modifier prices
+            if (isset($this->itemModifiersSelected[$key]) && is_array($this->itemModifiersSelected[$key])) {
+                $modifierPrice = 0;
+                foreach ($this->itemModifiersSelected[$key] as $modifierId) {
+                    $modifier = ModifierOption::find($modifierId);
+                    if ($modifier) {
+                        if ($this->orderTypeId) {
+                            $modifier->setPriceContext($this->orderTypeId, null);
+                        }
+                        $modifierPrice += $modifier->price;
+                    }
+                }
+                $this->orderItemModifiersPrice[$key] = $modifierPrice;
+            }
+
+            // Recalculate item amount
+            $basePrice = isset($this->orderItemVariation[$key]) ? $this->orderItemVariation[$key]->price : $item->price;
+            $this->orderItemAmount[$key] = $this->orderItemQty[$key] * ($basePrice + ($this->orderItemModifiersPrice[$key] ?? 0));
+        }
+
+        $this->calculateTotal();
+    }
+
+    /**
+     * Handle order type selection from modal
+     */
+    public function selectOrderTypeFromModal($orderTypeId)
+    {
+        if (!$orderTypeId) {
+            return;
+        }
+
+        // Set the order type ID which will trigger updatedOrderTypeId
+        $this->orderTypeId = $orderTypeId;
+        $this->orderTypeSlug = OrderType::find($orderTypeId)->slug;
+        $this->orderType = OrderType::find($orderTypeId)->type;
+
+        // Close the modal
+        $this->showOrderTypeModal = false;
     }
 
     public function initializeHeaderSettings()
@@ -262,6 +413,17 @@ class Cart extends Component
 
             $this->orderItemList[$id] = $this->menuItem;
             $this->orderItemQty[$id] = $this->orderItemQty[$id] ?? 1;
+
+            // Set price context before using price
+            if ($this->orderTypeId) {
+                if (isset($this->orderItemVariation[$id])) {
+                    $this->orderItemVariation[$id]->setPriceContext($this->orderTypeId, null);
+                }
+                if (isset($this->orderItemList[$id])) {
+                    $this->orderItemList[$id]->setPriceContext($this->orderTypeId, null);
+                }
+            }
+
             $basePrice = $this->orderItemVariation[$id]->price ?? $this->orderItemList[$id]->price;
             $this->orderItemAmount[$id] = $this->orderItemQty[$id] * ($basePrice + ($this->orderItemModifiersPrice[$id] ?? 0));
             $this->cartItemQty[$id] = isset($this->cartItemQty[$this->menuItem->id]) ? ($this->cartItemQty[$this->menuItem->id] + 1) : 1;
@@ -281,6 +443,17 @@ class Cart extends Component
         $this->showCartVariationModal = false;
         $this->orderItemQty[$id] = isset($this->orderItemQty[$id]) ? ($this->orderItemQty[$id] + 1) : 1;
         $this->cartItemQty[$id] = isset($this->cartItemQty[$id]) ? ($this->cartItemQty[$id] + 1) : 1;
+
+        // Set price context before using price
+        if ($this->orderTypeId) {
+            if (isset($this->orderItemVariation[$id])) {
+                $this->orderItemVariation[$id]->setPriceContext($this->orderTypeId, null);
+            }
+            if (isset($this->orderItemList[$id])) {
+                $this->orderItemList[$id]->setPriceContext($this->orderTypeId, null);
+            }
+        }
+
         $basePrice = $this->orderItemVariation[$id]->price ?? $this->orderItemList[$id]->price;
         $this->orderItemAmount[$id] = $this->orderItemQty[$id] * ($basePrice + ($this->orderItemModifiersPrice[$id] ?? 0));
         $this->calculateTotal();
@@ -291,6 +464,17 @@ class Cart extends Component
     {
         $this->showCartVariationModal = false;
         $this->orderItemQty[$id] = (isset($this->orderItemQty[$id]) && $this->orderItemQty[$id] > 1) ? ($this->orderItemQty[$id] - 1) : 0;
+
+        // Set price context before using price
+        if ($this->orderTypeId) {
+            if (isset($this->orderItemVariation[$id])) {
+                $this->orderItemVariation[$id]->setPriceContext($this->orderTypeId, null);
+            }
+            if (isset($this->orderItemList[$id])) {
+                $this->orderItemList[$id]->setPriceContext($this->orderTypeId, null);
+            }
+        }
+
         $basePrice = $this->orderItemVariation[$id]->price ?? $this->orderItemList[$id]->price;
         $this->orderItemAmount[$id] = $this->orderItemQty[$id] * ($basePrice + ($this->orderItemModifiersPrice[$id] ?? 0));
         $menuID = explode('_', $id);
@@ -319,7 +503,7 @@ class Cart extends Component
     {
         $this->cartQty = 0;
 
-        foreach ($this->orderItemQty as $qty) {
+        foreach ($this->orderItemQty ?? [] as $qty) {
             if ($qty > 0) {
                 $this->cartQty++;
             }
@@ -372,43 +556,60 @@ class Cart extends Component
         $this->total += (float)$this->deliveryFee ?: 0;
     }
 
+    /**
+     * Legacy method kept for backward compatibility
+     * Use updatedOrderTypeId for new implementation
+     */
     public function updatedOrderType($value)
     {
-        $mainExtraCharges = RestaurantCharge::withoutGlobalScopes()
+        
+        // Find the order type by slug or type
+        $orderTypeModel = OrderType::where('branch_id', $this->shopBranch->id)
+            ->where('is_active', true)
+            ->where(function($q) use ($value) {
+                $q->where('slug', $value)
+                  ->orWhere('type', $value);
+            })
+            ->first();
+
+        if ($orderTypeModel) {
+            $this->orderTypeId = $orderTypeModel->id;
+            $mainExtraCharges = RestaurantCharge::withoutGlobalScopes()
             ->whereJsonContains('order_types', $value)
             ->where('is_enabled', true)
             ->where('restaurant_id', $this->restaurant->id)
             ->get();
         // Early return for new orders
         if (!$this->orderID) {
-            // Only clear delivery-related fields if the order type is not delivery
-            if ($value !== 'delivery') {
-                $this->addressLat = null;
-                $this->addressLng = null;
-                $this->deliveryAddress = null;
-                $this->deliveryFee = null;
+                // Only clear delivery-related fields if the order type is not delivery
+                if ($value !== 'delivery') {
+                    $this->addressLat = null;
+                    $this->addressLng = null;
+                    $this->deliveryAddress = null;
+                    $this->deliveryFee = null;
+                }
+
+                $this->calculateMaxPreparationTime();
+                $this->extraCharges = $mainExtraCharges;
+                $this->calculateTotal();
+                return;
             }
 
-            $this->calculateMaxPreparationTime();
-            $this->extraCharges = $mainExtraCharges;
+            // Early return if no valid order or order is paid
+            if (!$this->order || $this->order->status === 'paid') {
+                return;
+            }
+
+            // Efficiently get the slug from the order's order type
+            $orderTypeFromOrder = $this->order->order_type_id
+                ? (OrderType::where('id', $this->order->order_type_id)->value('slug') ?? $this->order->order_type)
+                : $this->order->order_type;
+
+            // Keep existing charges if order type is unchanged, otherwise set new ones
+            $this->extraCharges = $orderTypeFromOrder === $value ? $this->order->extraCharges : $mainExtraCharges;
+
             $this->calculateTotal();
-            return;
         }
-
-        // Early return if no valid order or order is paid
-        if (!$this->order || $this->order->status === 'paid') {
-            return;
-        }
-
-        // Efficiently get the slug from the order's order type
-        $orderTypeFromOrder = $this->order->order_type_id
-            ? (OrderType::where('id', $this->order->order_type_id)->value('slug') ?? $this->order->order_type)
-            : $this->order->order_type;
-
-        // Keep existing charges if order type is unchanged, otherwise set new ones
-        $this->extraCharges = $orderTypeFromOrder === $value ? $this->order->extraCharges : $mainExtraCharges;
-
-        $this->calculateTotal();
     }
 
     #[On('setPosVariation')]
@@ -416,6 +617,11 @@ class Cart extends Component
     {
         $this->showVariationModal = false;
         $menuItemVariation = MenuItemVariation::find($variationId);
+
+        // Set price context before using variation
+        if ($this->orderTypeId) {
+            $menuItemVariation->setPriceContext($this->orderTypeId, null);
+        }
 
         $modifiersAvailable = $menuItemVariation->menuItem->modifiers->count();
 
@@ -592,12 +798,26 @@ class Cart extends Component
         } else {
             $orderNumberData = Order::generateOrderNumber($this->shopBranch);
 
-            $orderTypeModel = OrderType::where('is_default', 1)
-                ->where('type', $this->orderType)
-                ->first();
+            // Use the already selected order type ID if available
+            if ($this->orderTypeId) {
+                $orderTypeModel = OrderType::find($this->orderTypeId);
+                $orderTypeId = $orderTypeModel->id ?? null;
+                $orderTypeName = $orderTypeModel->order_type_name ?? $this->orderType;
+                // Ensure slug is set in case it wasn't already
+                if (!$this->orderTypeSlug && $orderTypeModel) {
+                    $this->orderTypeSlug = $orderTypeModel->slug;
+                }
+            } else {
+                // Fallback to finding default order type
+                $orderTypeModel = OrderType::where('is_default', 1)
+                    ->where('type', $this->orderType)
+                    ->first();
 
-            $orderTypeId = $orderTypeModel->id ?? null;
-            $orderTypeName = $orderTypeModel->order_type_name ?? $this->orderType;
+                $orderTypeId = $orderTypeModel->id ?? null;
+                $orderTypeName = $orderTypeModel->order_type_name ?? $this->orderType;
+                $this->orderTypeSlug = $orderTypeModel->slug ?? $this->orderType;
+            }
+
             $order = Order::create([
                 'order_number' => $orderNumberData['order_number'],
                 'formatted_order_number' => $orderNumberData['formatted_order_number'],
@@ -607,7 +827,7 @@ class Cart extends Component
                 'customer_id' => $this->customer->id ?? null,
                 'sub_total' => $this->subTotal,
                 'total' => $this->total,
-                'order_type' => $this->orderType,
+                'order_type' => $this->orderTypeSlug ?? $this->orderType,
                 'order_type_id' => $orderTypeId,
                 'custom_order_type_name' => $orderTypeName,
                 'pickup_date' => $this->deliveryDateTime,
@@ -652,7 +872,7 @@ class Cart extends Component
             $kot->update(['status' => 'served']);
         }
 
-        foreach ($this->orderItemList as $key => $value) {
+        foreach ($this->orderItemList ?? [] as $key => $value) {
 
             $kotItem = KotItem::create([
                 'kot_id' => $kot->id,
@@ -667,7 +887,7 @@ class Cart extends Component
             $kotItem->modifierOptions()->sync($this->itemModifiersSelected[$key]);
         }
 
-        foreach ($this->orderItemList as $key => $value) {
+        foreach ($this->orderItemList ?? [] as $key => $value) {
             $orderItem = OrderItem::create([
                 'branch_id' => $this->shopBranch->id,
                 'order_id' => $order->id,
@@ -689,7 +909,7 @@ class Cart extends Component
         }
 
         if ($this->taxMode === 'order') {
-            foreach ($this->taxes as $key => $value) {
+            foreach ($this->taxes ?? [] as $key => $value) {
                 OrderTax::firstOrCreate([
                     'order_id' => $order->id,
                     'tax_id' => $value->id
@@ -701,7 +921,7 @@ class Cart extends Component
             $order->extraCharges()->detach();
         }
 
-        foreach ($this->extraCharges as $key => $value) {
+        foreach ($this->extraCharges ?? [] as $key => $value) {
             OrderCharge::create([
                 'order_id' => $order->id,
                 'charge_id' => $value->id
@@ -1185,6 +1405,12 @@ class Cart extends Component
 
         if (isset(explode('_', $this->selectedModifierItem)[1])) {
             $menuItemVariation = MenuItemVariation::find(explode('_', $this->selectedModifierItem)[1]);
+
+            // Set price context on variation
+            if ($this->orderTypeId) {
+                $menuItemVariation->setPriceContext($this->orderTypeId, null);
+            }
+
             $this->orderItemVariation[$keyId] = $menuItemVariation;
             $this->selectedModifierItem = explode('_', $this->selectedModifierItem)[0];
             $this->orderItemAmount[$keyId] = 1 * ($this->orderItemVariation[$keyId]->price ?? $this->orderItemList[$keyId]->price);
@@ -1193,10 +1419,19 @@ class Cart extends Component
         $this->cartItemQty[$keyId] = ($this->cartItemQty[$keyId] ?? 0) + 1;
         $this->itemModifiersSelected[$keyId] = Arr::flatten($modifierIds);
 
-        $modifierTotal = collect($this->itemModifiersSelected[$keyId])
-            ->sum(fn($modifierId) => $this->getModifierOptionsProperty()[$modifierId]->price);
+        // Set price context on modifiers before calculating total
+        $modifierTotal = 0;
+        foreach ($this->itemModifiersSelected[$keyId] ?? [] as $modifierId) {
+            $modifier = ModifierOption::find($modifierId);
+            if ($modifier) {
+                if ($this->orderTypeId) {
+                    $modifier->setPriceContext($this->orderTypeId, null);
+                }
+                $modifierTotal += $modifier->price;
+            }
+        }
 
-        $this->orderItemModifiersPrice[$keyId] = (1 * (isset($this->itemModifiersSelected[$keyId]) ? $modifierTotal : 0));
+        $this->orderItemModifiersPrice[$keyId] = $modifierTotal;
 
         $this->syncCart($keyId);
     }
@@ -1229,7 +1464,7 @@ class Cart extends Component
 
     public function calculateMaxPreparationTime()
     {
-        $this->maxPreparationTime = $this->orderItemList ? max(array_map(fn($item) => $item->preparation_time ?? 0, $this->orderItemList)) : 0;
+        $this->maxPreparationTime = !empty($this->orderItemList) ? max(array_map(fn($item) => $item->preparation_time ?? 0, $this->orderItemList)) : 0;
     }
 
     // Centralized tax calculation methods to eliminate code duplication
@@ -1239,7 +1474,7 @@ class Cart extends Component
 
         if ($this->taxMode === 'order') {
             // Order-based taxation
-            foreach ($this->taxes as $tax) {
+            foreach ($this->taxes ?? [] as $tax) {
                 $taxAmount = ($tax->tax_percent / 100) * $this->subTotal;
                 $this->totalTaxAmount += $taxAmount;
                 $this->total += $taxAmount;
@@ -1251,7 +1486,7 @@ class Cart extends Component
             $isInclusive = $this->restaurant->tax_inclusive ?? false;
 
             // Calculate total tax amounts
-            foreach ($this->orderItemTaxDetails as $itemTaxDetail) {
+            foreach ($this->orderItemTaxDetails ?? [] as $itemTaxDetail) {
                 $taxAmount = $itemTaxDetail['tax_amount'] ?? 0;
 
                 if ($isInclusive) {
@@ -1281,6 +1516,15 @@ class Cart extends Component
 
         foreach ($this->orderItemAmount as $key => $value) {
             $menuItem = isset($this->orderItemVariation[$key]) ? $this->orderItemVariation[$key]->menuItem : $this->orderItemList[$key];
+
+            // Set price context before using prices
+            if ($this->orderTypeId) {
+                $menuItem->setPriceContext($this->orderTypeId, null);
+                if (isset($this->orderItemVariation[$key])) {
+                    $this->orderItemVariation[$key]->setPriceContext($this->orderTypeId, null);
+                }
+            }
+
             $qty = $this->orderItemQty[$key] ?? 1;
             $basePrice = isset($this->orderItemVariation[$key]) ? $this->orderItemVariation[$key]->price : $menuItem->price;
             $modifierPrice = $this->orderItemModifiersPrice[$key] ?? 0;
@@ -1307,6 +1551,16 @@ class Cart extends Component
     {
         if ($this->taxMode === 'item' && isset($this->orderItemTaxDetails[$key])) {
             return $this->orderItemTaxDetails[$key]['display_price'] ?? 0;
+        }
+
+        // Set price context before using price
+        if ($this->orderTypeId) {
+            if (isset($this->orderItemVariation[$key])) {
+                $this->orderItemVariation[$key]->setPriceContext($this->orderTypeId, null);
+            }
+            if (isset($this->orderItemList[$key])) {
+                $this->orderItemList[$key]->setPriceContext($this->orderTypeId, null);
+            }
         }
 
         // For non-item tax mode, return the original price
@@ -1378,10 +1632,41 @@ class Cart extends Component
 
         $menuList = Menu::withoutGlobalScopes()->where('branch_id', $this->shopBranch->id)->withCount('items')->orderBy('sort_order')->get();
 
+        // Get available order types for customer (no delivery apps)
+        $orderTypes = OrderType::where('branch_id', $this->shopBranch->id)
+            ->where('is_active', true)
+            ->where('is_default', false) // Only custom order types
+            ->orderBy('order_type_name')
+            ->get();
+
+        // Also get default order types if no custom ones exist
+        if ($orderTypes->isEmpty()) {
+            $orderTypes = OrderType::where('branch_id', $this->shopBranch->id)
+                ->where('is_active', true)
+                ->orderBy('order_type_name')
+                ->get();
+        }
+
+        // Set price context on menu items in the query results
+        if ($this->orderTypeId) {
+            foreach ($query as $categoryItems) {
+                foreach ($categoryItems as $item) {
+                    $item->setPriceContext($this->orderTypeId, null);
+                    // Set price context on variations
+                    if ($item->relationLoaded('variations')) {
+                        foreach ($item->variations as $variation) {
+                            $variation->setPriceContext($this->orderTypeId, null);
+                        }
+                    }
+                }
+            }
+        }
+
         return view('livewire.shop.cart', [
             'menuItems' => $query,
             'categoryList' => $categoryList,
-            'menuList' => $menuList
+            'menuList' => $menuList,
+            'orderTypes' => $orderTypes,
         ]);
     }
 
@@ -1437,7 +1722,6 @@ class Cart extends Component
                                 $this->handleKotPrint($kot->id, $kotPlace->id);
                                 break;
                             default:
-                               
                         }
                     } catch (\Throwable $e) {
                         $this->alert('error', __('messages.printerNotConnected') . ' ' . $e->getMessage(), [

@@ -20,7 +20,7 @@ class KotController extends Controller
         return view('kot.index');
     }
 
-    public function printKot($id, $kotPlaceid = null, $width = 56, $thermal = false)
+    public function printKot($id, $kotPlaceid = null, $width = 80, $thermal = false)
     {
         $kot = Kot::with('items', 'order.waiter', 'table')->find($id);
         $kotPlace = KotPlace::find($kotPlaceid);

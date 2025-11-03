@@ -25,6 +25,7 @@ return array(
     'itemReport' => 'Item Report',
     'categoryReport' => 'Category Report',
     'salesReport' => 'Sales Report',
+    'deliveryAppReport' => 'Delivery App Report',
     'settings' => 'Settings',
     'signOut' => 'Sign Out',
     'appUpdate' => 'App Update',
@@ -54,4 +55,5 @@ return array(
     'superadminPaymentSetting' => 'Payment Settings',
     'adminPaymentSetting' => 'Restaurant Payment Settings',
     'customerDisplay' => 'Customer Display',
+    'deliveryAppReport' => 'Delivery App Report',
 );

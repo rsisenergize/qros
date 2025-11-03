@@ -8,7 +8,7 @@
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            font-family: 'Arial', sans-serif;
+            font-family: 'DejaVu Sans', 'Arial', sans-serif;
         }
         [dir="rtl"] { text-align: right; }
         [dir="ltr"] { text-align: left; }

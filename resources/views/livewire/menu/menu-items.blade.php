@@ -47,7 +47,7 @@
                             @forelse ($menuItems as $item)
                             <tr class="hover:bg-gray-100 dark:hover:bg-gray-700" wire:key='menu-item-{{ $item->id . microtime() }}' wire:loading.class.delay='opacity-10'>
                                 <td class="lg:flex items-center p-4 mr-12 lg:space-x-6 rtl:space-x-reverse">
-                                    <img class="w-12 h-12 lg:w-16 lg:h-16 rounded-md object-cover" src="{{ $item->item_photo_url }}"
+                                    <img class="w-12 h-12 lg:w-16 lg:h-16 rounded-md object-cover" src="{{ $item->item_photo_url }}" loading="lazy"
                                         alt="{{ $item->item_name }}">
                                     <div class="text-sm font-normal text-gray-500 dark:text-gray-400 w-40 lg:w-auto">
                                         <div class="text-sm lg:text-base font-semibold text-gray-900 dark:text-white inline-flex items-center">
@@ -81,39 +81,21 @@
                                 <td class="py-2.5 px-4 space-x-2 whitespace-nowrap text-right rtl:space-x-reverse">
                                     @if ($item->variations_count > 0)
                                     <x-secondary-button-table wire:click='showItemVariations({{ $item->id }})'>
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
-                                            fill="currentColor" class="w-4 h-4 mr-1" viewBox="0 0 16 16">
-                                            <path fill-rule="evenodd"
-                                                d="M8 2a.5.5 0 0 1 .5.5v5h5a.5.5 0 0 1 0 1h-5v5a.5.5 0 0 1-1 0v-5h-5a.5.5 0 0 1 0-1h5v-5A.5.5 0 0 1 8 2" />
-                                        </svg>
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="w-4 h-4 mr-1" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M8 2a.5.5 0 0 1 .5.5v5h5a.5.5 0 0 1 0 1h-5v5a.5.5 0 0 1-1 0v-5h-5a.5.5 0 0 1 0-1h5v-5A.5.5 0 0 1 8 2"/></svg>
                                         @lang('modules.menu.showVariations')
                                     </x-secondary-button-table>
                                     @endif
 
                                     @if(user_can('Update Menu Item'))
-                                    <x-secondary-button-table wire:click='showEditMenu({{ $item->id }})'
-                                        wire:key='editmenu-item-button-{{ $item->id }}'>
-                                        <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20"
-                                            xmlns="http://www.w3.org/2000/svg">
-                                            <path
-                                                d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z">
-                                            </path>
-                                            <path fill-rule="evenodd"
-                                                d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z"
-                                                clip-rule="evenodd"></path>
-                                        </svg>
+                                    <x-secondary-link href="{{ route('menu-items.edit', $item->id) }}" wire:navigate >
+                                        <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M17.414 2.586a2 2 0 0 0-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 0 0 0-2.828"/><path fill-rule="evenodd" d="M2 6a2 2 0 0 1 2-2h4a1 1 0 0 1 0 2H4v10h10v-4a1 1 0 1 1 2 0v4a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2z" clip-rule="evenodd"/></svg>
                                         @lang('app.update')
-                                    </x-secondary-button>
+                                    </x-secondary-link>
                                     @endif
 
                                     @if(user_can('Delete Menu Item'))
                                     <x-danger-button-table wire:click="showDeleteMenuItem({{ $item->id }})">
-                                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"
-                                            xmlns="http://www.w3.org/2000/svg">
-                                            <path fill-rule="evenodd"
-                                                d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z"
-                                                clip-rule="evenodd"></path>
-                                        </svg>
+                                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M9 2a1 1 0 0 0-.894.553L7.382 4H4a1 1 0 0 0 0 2v10a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V6a1 1 0 1 0 0-2h-3.382l-.724-1.447A1 1 0 0 0 11 2zM7 8a1 1 0 0 1 2 0v6a1 1 0 1 1-2 0zm5-1a1 1 0 0 0-1 1v6a1 1 0 1 0 2 0V8a1 1 0 0 0-1-1" clip-rule="evenodd"/></svg>
                                     </x-danger-button-table>
                                     @endif
 
@@ -142,26 +124,7 @@
             {{ $menuItems->links() }}
         </div>
     </div>
-
-
-    <!-- Product Drawer -->
-    <x-right-modal wire:model.live="showEditMenuItem">
-        <x-slot name="title">
-            {{ __("modules.menu.editMenuItem") }}
-        </x-slot>
-
-        <x-slot name="content">
-            @if ($menuItem)
-            @livewire('forms.editMenuItem', ['menuItem' => $menuItem], key(str()->random(50)))
-            @endif
-        </x-slot>
-
-        <x-slot name="footer">
-            <x-secondary-button wire:click="$set('showEditMenuItem', false)" wire:loading.attr="disabled">
-                {{ __('app.close') }}
-            </x-secondary-button>
-        </x-slot>
-    </x-right-modal>
+   
 
     <x-dialog-modal wire:model.live="showMenuCategoryModal" maxWidth="xl">
         <x-slot name="title">

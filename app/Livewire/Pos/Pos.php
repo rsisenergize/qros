@@ -35,12 +35,13 @@ use Illuminate\Support\Facades\Cache;
 use Jantinnerezo\LivewireAlert\LivewireAlert;
 use App\Models\Customer;
 use App\Models\Menu;
+use App\Models\DeliveryPlatform;
 
 class Pos extends Component
 {
     use LivewireAlert, PrinterSetting;
 
-    protected $listeners = ['refreshPos' => '$refresh', 'customerSelected' => 'setCustomer'];
+    protected $listeners = ['refreshPos' => '$refresh', 'customerSelected' => 'setCustomer', 'setOrderTypeChoice','refreshPosOrder' => 'refreshOrderData'];
 
 
     public $categoryList;
@@ -105,6 +106,7 @@ class Pos extends Component
     public $cancelReason;
     public $cancelReasonText;
     public $orderTypeId;
+    public $selectedDeliveryApp = null;
     public $deliveryDateTime;
     public $customerDisplayStatus = 'idle';
     public $totalTaxAmount = 0;
@@ -153,16 +155,21 @@ class Pos extends Component
         $this->taxes = Tax::all();
 
         $this->selectWaiter = user()->id;
-        $orderType = OrderType::where('branch_id', branch()->id)->where('is_active', true)->first();
 
-        $this->orderType = $orderType->type;
-        $this->orderTypeId = $orderType->id;
-        $this->orderTypeSlug = $orderType->slug;
         $this->deliveryExecutives = DeliveryExecutive::where('status', 'available')->get();
 
         if ($this->tableOrderID) {
             $this->tableId = $this->tableOrderID;
             $this->tableOrder = Table::find($this->tableOrderID);
+
+            if (!$this->tableOrder) {
+                $this->alert('error', __('Table not found'), [
+                    'toast' => true,
+                    'position' => 'top-end',
+                ]);
+                return $this->redirect(route('pos.index'), navigate: true);
+            }
+
             $this->tableNo = $this->tableOrder->table_code;
             $this->orderID = $this->tableOrder->activeOrder ? $this->tableOrder->activeOrder->id : null;
 
@@ -179,7 +186,7 @@ class Pos extends Component
                 }
             } elseif ($this->orderDetail) {
                 return $this->redirect(route('pos.index'), navigate: true);
-            }else{
+            } else {
                 $this->setTable($this->tableOrder);
             }
         }
@@ -207,6 +214,7 @@ class Pos extends Component
             $this->orderType = $order->order_type;
             $this->deliveryDateTime = $order->pickup_date;
             $this->taxMode = $order->tax_mode ?? $this->taxMode;
+            $this->selectedDeliveryApp = $order->delivery_app_id;
 
             if ($this->orderDetail) {
 
@@ -226,7 +234,137 @@ class Pos extends Component
 
         $this->cancelReasons = KotCancelReason::where('cancel_order', true)->get();
         $this->menuList = Menu::withoutGlobalScopes()->where('branch_id', branch()->id)->orderBy('sort_order')->get();
+    }
 
+    public function setOrderTypeChoice($value)
+    {
+        try {
+            // Handle if $value is an array containing orderType and orderTypeId
+            if (is_array($value) && isset($value['orderTypeId'])) {
+                $this->orderTypeId = $value['orderTypeId'];
+
+                // Store delivery platform if provided
+                $this->selectedDeliveryApp = $value['deliveryPlatform'] ?? null;
+
+                // Get the order type object
+                $orderType = OrderType::find($this->orderTypeId);
+
+                if ($orderType) {
+                    $this->orderType = $orderType->type;
+                    $this->orderTypeSlug = $orderType->slug;
+
+                    // If this is a delivery order, handle delivery-specific settings
+                    if ($this->orderTypeSlug === 'delivery') {
+                        // You can set default delivery fee here if needed
+                        // $this->deliveryFee = $this->getDefaultDeliveryFee();
+                    } else {
+                        $this->deliveryFee = 0;
+                    }
+
+                    // Get relevant extra charges for this order type
+                    $this->extraCharges = RestaurantCharge::whereJsonContains('order_types', $this->orderTypeSlug)
+                        ->where('is_enabled', true)
+                        ->get();
+
+                    // Update prices for existing cart items when delivery platform changes
+                    $this->updateCartItemsPricing();
+
+                    // Calculate total with new order type settings
+                    $this->calculateTotal();
+
+                    // Display success notification for better UX
+                    $platformName = $this->selectedDeliveryApp && $this->selectedDeliveryApp !== 'default'
+                        ? DeliveryPlatform::find($this->selectedDeliveryApp)?->name ?? ''
+                        : '';
+
+                    $message = $platformName
+                        ? __('modules.order.orderTypeSetTo', ['type' => $orderType->order_type_name]) . ' - ' . $platformName
+                        : __('modules.order.orderTypeSetTo', ['type' => $orderType->order_type_name]);
+
+                    $this->alert('success', $message, [
+                        'toast' => true,
+                        'position' => 'top-end',
+                        'timer' => 2000,
+                        'showCancelButton' => false,
+                    ]);
+                }
+            } else {
+                // Legacy handling for direct ID passing
+                $this->orderTypeId = $value;
+
+                $this->selectedDeliveryApp = null;
+
+                $orderType = OrderType::find($this->orderTypeId);
+
+                if ($orderType) {
+                    $this->orderType = $orderType->type;
+                    $this->orderTypeSlug = $orderType->slug;
+
+                    // Update prices for existing cart items
+                    $this->updateCartItemsPricing();
+                }
+            }
+        } catch (\Exception $e) {
+            Log::error('Error setting order type: ' . $e->getMessage());
+            $this->alert('error', 'Error setting order type: ' . $e->getMessage(), [
+                'toast' => true,
+                'position' => 'top-end',
+            ]);
+        }
+    }
+
+    /**
+     * Normalize delivery app ID to ensure it's either an integer or null
+     * Converts 'default' string to null
+     */
+    private function normalizeDeliveryAppId()
+    {
+        if ($this->selectedDeliveryApp === 'default' || $this->selectedDeliveryApp === null) {
+            return null;
+        }
+        return is_numeric($this->selectedDeliveryApp) ? (int)$this->selectedDeliveryApp : null;
+    }
+
+    /**
+     * Get the normalized delivery app ID for use in views
+     */
+    public function getNormalizedDeliveryAppIdProperty()
+    {
+        return $this->normalizeDeliveryAppId();
+    }
+
+    /**
+     * Update pricing for all items in cart when order type or delivery platform changes
+     */
+    public function updateCartItemsPricing()
+    {
+        // Update prices for all items in cart when order type or delivery platform changes
+        foreach ($this->orderItemList as $key => $item) {
+            if ($this->orderTypeId) {
+                // Set price context on menu item and variation
+                $item->setPriceContext($this->orderTypeId, $this->normalizeDeliveryAppId());
+                if (isset($this->orderItemVariation[$key])) {
+                    $this->orderItemVariation[$key]->setPriceContext($this->orderTypeId, $this->normalizeDeliveryAppId());
+                }
+
+                // Update modifier prices
+                if (!empty($this->itemModifiersSelected[$key])) {
+                    $modifierOptions = $this->getModifierOptionsProperty();
+                    $modifierTotal = 0;
+                    foreach ($this->itemModifiersSelected[$key] as $modifierId) {
+                        if (isset($modifierOptions[$modifierId])) {
+                            $modifierOptions[$modifierId]->setPriceContext($this->orderTypeId, $this->normalizeDeliveryAppId());
+                            $modifierTotal += $modifierOptions[$modifierId]->price;
+                        }
+                    }
+                    $this->orderItemModifiersPrice[$key] = $modifierTotal;
+                }
+
+                // Recalculate item amount with updated prices
+                $basePrice = isset($this->orderItemVariation[$key]) ? $this->orderItemVariation[$key]->price : $item->price;
+                $this->orderItemAmount[$key] = $this->orderItemQty[$key] * ($basePrice + ($this->orderItemModifiersPrice[$key] ?? 0));
+            }
+        }
     }
 
     public function updatedOrderTypeId($value)
@@ -248,10 +386,32 @@ class Pos extends Component
             $this->orderStatus = 'preparing';
 
             // Set default delivery fee for delivery orders
-            if ($value === 'delivery') {
+            if ($this->orderTypeSlug === 'delivery') {
                 $this->deliveryFee = $this->getDefaultDeliveryFee();
             } else {
                 $this->deliveryFee = 0;
+            }
+
+            // Recalculate prices for all items in cart when order type changes
+            foreach ($this->orderItemList as $key => $item) {
+                if ($this->orderTypeId) {
+                    $item->setPriceContext($this->orderTypeId, $this->normalizeDeliveryAppId());
+                    if (isset($this->orderItemVariation[$key])) {
+                        $this->orderItemVariation[$key]->setPriceContext($this->orderTypeId, $this->normalizeDeliveryAppId());
+                    }
+                }
+
+                // Recalculate modifier prices
+                if (!empty($this->itemModifiersSelected[$key])) {
+                    $modifierOptions = $this->getModifierOptionsProperty();
+                    $modifierTotal = collect($this->itemModifiersSelected[$key])
+                        ->sum(fn($modifierId) => isset($modifierOptions[$modifierId]) ? $modifierOptions[$modifierId]->price : 0);
+                    $this->orderItemModifiersPrice[$key] = $modifierTotal;
+                }
+
+                // Recalculate item amount
+                $basePrice = isset($this->orderItemVariation[$key]) ? $this->orderItemVariation[$key]->price : $item->price;
+                $this->orderItemAmount[$key] = $this->orderItemQty[$key] * ($basePrice + ($this->orderItemModifiersPrice[$key] ?? 0));
             }
 
             $this->calculateTotal();
@@ -274,6 +434,29 @@ class Pos extends Component
         $this->extraCharges = $orderTypeSlugFromOrder === $this->orderTypeSlug ? $order->extraCharges : $mainExtraCharges;
 
         $this->orderStatus = $order->order_status;
+
+        // Recalculate prices for all items in cart when order type changes
+        foreach ($this->orderItemList as $key => $item) {
+            if ($this->orderTypeId) {
+                $item->setPriceContext($this->orderTypeId, $this->normalizeDeliveryAppId());
+                if (isset($this->orderItemVariation[$key])) {
+                    $this->orderItemVariation[$key]->setPriceContext($this->orderTypeId, $this->normalizeDeliveryAppId());
+                }
+            }
+
+            // Recalculate modifier prices
+            if (!empty($this->itemModifiersSelected[$key])) {
+                $modifierOptions = $this->getModifierOptionsProperty();
+                $modifierTotal = collect($this->itemModifiersSelected[$key])
+                    ->sum(fn($modifierId) => isset($modifierOptions[$modifierId]) ? $modifierOptions[$modifierId]->price : 0);
+                $this->orderItemModifiersPrice[$key] = $modifierTotal;
+            }
+
+            // Recalculate item amount
+            $basePrice = isset($this->orderItemVariation[$key]) ? $this->orderItemVariation[$key]->price : $item->price;
+            $this->orderItemAmount[$key] = $this->orderItemQty[$key] * ($basePrice + ($this->orderItemModifiersPrice[$key] ?? 0));
+        }
+
         $this->calculateTotal();
     }
 
@@ -339,6 +522,42 @@ class Pos extends Component
         }
     }
 
+    public function changeOrderType()
+    {
+        // Check if we have ongoing order items that would be affected
+        if (!empty($this->orderItemList)) {
+            // Show confirmation dialog before changing
+            $this->alert('question', __('modules.order.changeOrderType'), [
+                'text' => __('modules.order.changeOrderTypeConfirmation'),
+                'showCancelButton' => true,
+                'showConfirmButton' => true,
+                'withConfirmButton' => __('app.yes') . ', ' . __('app.change'),
+                'cancelButtonText' => __('app.cancel'),
+                'timer' => 3000,
+                'onConfirmed' => 'confirmChangeOrderType',
+            ]);
+        } else {
+            // No items in cart, safe to change directly
+            $this->resetOrderTypeSelection();
+        }
+    }
+
+    #[On('confirmChangeOrderType')]
+    public function resetOrderTypeSelection()
+    {
+        // Reset order type related properties
+        $this->orderTypeId = null;
+        $this->orderTypeSlug = null;
+        $this->orderType = null;
+        $this->selectedDeliveryApp = null;
+
+        // Clear delivery fee if it was set
+        $this->deliveryFee = 0;
+
+        // Recalculate with new settings
+        $this->calculateTotal();
+    }
+
     public function showTableOrder()
     {
         $this->selectWaiter = $this->tableOrder->activeOrder->waiter_id;
@@ -375,20 +594,35 @@ class Pos extends Component
             foreach ($this->orderDetail->kot as $kot) {
                 $this->kotList['kot_' . $kot->id] = $kot;
 
-                foreach ($kot->items as $item) {
-                    $this->orderItemList['"kot_' . $kot->id . '_' . $item->id . '"'] = $item->menuItem;
-                    $this->orderItemQty['"kot_' . $kot->id . '_' . $item->id . '"'] = $item->quantity;
-                    $this->orderItemModifiersPrice['"kot_' . $kot->id . '_' . $item->id . '"'] = $item->modifierOptions->sum('price');
-                    $this->itemModifiersSelected['"kot_' . $kot->id . '_' . $item->id . '"'] = $item->modifierOptions->pluck('id')->toArray();
+                foreach ($kot->items->where('status', '!=', 'cancelled') as $item) {
+                    $key = '"kot_' . $kot->id . '_' . $item->id . '"';
+
+                    $this->orderItemList[$key] = $item->menuItem;
+                    $this->orderItemQty[$key] = $item->quantity;
+                    $this->itemModifiersSelected[$key] = $item->modifierOptions->pluck('id')->toArray();
+
+                    // Set price context before calculating amounts
+                    if ($this->orderTypeId) {
+                        $item->menuItem->setPriceContext($this->orderTypeId, $this->normalizeDeliveryAppId());
+                        if ($item->menuItemVariation) {
+                            $item->menuItemVariation->setPriceContext($this->orderTypeId, $this->normalizeDeliveryAppId());
+                        }
+                        // Set context on modifiers too
+                        foreach ($item->modifierOptions as $modifier) {
+                            $modifier->setPriceContext($this->orderTypeId, $this->normalizeDeliveryAppId());
+                        }
+                    }
+
+                    $this->orderItemModifiersPrice[$key] = $item->modifierOptions->sum('price');
                     $basePrice = $item->menuItemVariation ? $item->menuItemVariation->price : $item->menuItem->price;
-                    $this->orderItemAmount['"kot_' . $kot->id . '_' . $item->id . '"'] = $this->orderItemQty['"kot_' . $kot->id . '_' . $item->id . '"'] * ($basePrice + ($this->orderItemModifiersPrice['"kot_' . $kot->id . '_' . $item->id . '"'] ?? 0));
+                    $this->orderItemAmount[$key] = $this->orderItemQty[$key] * ($basePrice + ($this->orderItemModifiersPrice[$key] ?? 0));
 
                     if ($item->menuItemVariation) {
-                        $this->orderItemVariation['"kot_' . $kot->id . '_' . $item->id . '"'] = $item->menuItemVariation;
+                        $this->orderItemVariation[$key] = $item->menuItemVariation;
                     }
 
                     if ($item->note) {
-                        $this->itemNotes['"kot_' . $kot->id . '_' . $item->id . '"'] = $item->note;
+                        $this->itemNotes[$key] = $item->note;
                     }
                 }
             }
@@ -417,6 +651,11 @@ class Pos extends Component
 
         $this->dispatch('play_beep');
         $this->menuItem = MenuItem::find($id);
+
+        // Set price context immediately after loading the item to prevent price flickering
+        if ($this->orderTypeId) {
+            $this->menuItem->setPriceContext($this->orderTypeId, $this->normalizeDeliveryAppId());
+        }
 
         // Initialize item note if it doesn't exist
         if (!isset($this->itemNotes[$id])) {
@@ -514,6 +753,12 @@ class Pos extends Component
     {
         $this->showVariationModal = false;
         $menuItemVariation = MenuItemVariation::find($variationId);
+
+        // Set price context on variation BEFORE using it to prevent price flickering
+        if ($this->orderTypeId) {
+            $menuItemVariation->setPriceContext($this->orderTypeId, $this->normalizeDeliveryAppId());
+        }
+
         $modifiersAvailable = $menuItemVariation->menuItem->modifiers->count();
 
         if ($modifiersAvailable) {
@@ -534,8 +779,17 @@ class Pos extends Component
         }
 
         if (!isset($this->orderItemList[$id])) {
+            // Set price context BEFORE adding to cart to prevent price flickering
+            if ($this->orderTypeId) {
+                $this->menuItem->setPriceContext($this->orderTypeId, $this->normalizeDeliveryAppId());
+                if (isset($this->orderItemVariation[$id])) {
+                    $this->orderItemVariation[$id]->setPriceContext($this->orderTypeId, $this->normalizeDeliveryAppId());
+                }
+            }
+
             $this->orderItemList[$id] = $this->menuItem;
             $this->orderItemQty[$id] = $this->orderItemQty[$id] ?? 1;
+
             $basePrice = $this->orderItemVariation[$id]->price ?? $this->orderItemList[$id]->price;
             $this->orderItemAmount[$id] = $this->orderItemQty[$id] * ($basePrice + ($this->orderItemModifiersPrice[$id] ?? 0));
             $this->calculateTotal();
@@ -728,6 +982,17 @@ class Pos extends Component
         }
 
         $this->orderItemQty[$id] = isset($this->orderItemQty[$id]) ? ($this->orderItemQty[$id] + 1) : 1;
+
+        // Set price context before using price
+        if ($this->orderTypeId) {
+            if (isset($this->orderItemVariation[$id])) {
+                $this->orderItemVariation[$id]->setPriceContext($this->orderTypeId, $this->normalizeDeliveryAppId());
+            }
+            if (isset($this->orderItemList[$id])) {
+                $this->orderItemList[$id]->setPriceContext($this->orderTypeId, $this->normalizeDeliveryAppId());
+            }
+        }
+
         $basePrice = $this->orderItemVariation[$id]->price ?? $this->orderItemList[$id]->price;
         $this->orderItemAmount[$id] = $this->orderItemQty[$id] * ($basePrice + ($this->orderItemModifiersPrice[$id] ?? 0));
         $this->calculateTotal();
@@ -746,6 +1011,17 @@ class Pos extends Component
         }
 
         $this->orderItemQty[$id] = (isset($this->orderItemQty[$id]) && $this->orderItemQty[$id] > 1) ? ($this->orderItemQty[$id] - 1) : 1;
+
+        // Set price context before using price
+        if ($this->orderTypeId) {
+            if (isset($this->orderItemVariation[$id])) {
+                $this->orderItemVariation[$id]->setPriceContext($this->orderTypeId, $this->normalizeDeliveryAppId());
+            }
+            if (isset($this->orderItemList[$id])) {
+                $this->orderItemList[$id]->setPriceContext($this->orderTypeId, $this->normalizeDeliveryAppId());
+            }
+        }
+
         $basePrice = $this->orderItemVariation[$id]->price ?? $this->orderItemList[$id]->price;
         $this->orderItemAmount[$id] = $this->orderItemQty[$id] * ($basePrice + ($this->orderItemModifiersPrice[$id] ?? 0));
         $this->calculateTotal();
@@ -1009,7 +1285,7 @@ class Pos extends Component
         $this->showErrorModal = true;
 
         $rules = [
-            'selectDeliveryExecutive' => Rule::requiredIf($action !== 'cancel' && $this->orderType === 'delivery'),
+            'selectDeliveryExecutive' => Rule::requiredIf($action !== 'cancel' && $this->orderType === 'delivery' && $this->selectedDeliveryApp === 'default'),
             'orderItemList' => 'required',
             'deliveryFee' => 'nullable|numeric|min:0',
         ];
@@ -1088,6 +1364,7 @@ class Pos extends Component
                 'pickup_date' => $this->orderType === 'pickup' ? $this->deliveryDateTime : null,
                 'delivery_executive_id' => ($this->orderType == 'delivery' ? $this->selectDeliveryExecutive : null),
                 'delivery_fee' => ($this->orderType == 'delivery' ? $this->deliveryFee : 0),
+                'delivery_app_id' => ($this->orderType == 'delivery' ? $this->normalizeDeliveryAppId() : null),
                 'status' => $status,
                 'order_status' => $this->orderStatus ?? 'preparing',
                 'placed_via' => 'pos',
@@ -1127,6 +1404,7 @@ class Pos extends Component
                 'sub_total' => $this->subTotal,
                 'total' => $this->total,
                 'delivery_fee' => ($this->orderType == 'delivery' ? $this->deliveryFee : 0),
+                'delivery_app_id' => ($this->orderType == 'delivery' ? $this->normalizeDeliveryAppId() : null),
                 'status' => $status,
                 'order_status' => $this->orderStatus ?? 'preparing'
             ]);
@@ -1227,7 +1505,7 @@ class Pos extends Component
                 $this->subTotal = 0;
 
                 foreach ($order->kot as $kot) {
-                    foreach ($kot->items as $item) {
+                    foreach ($kot->items->where('status', '!=', 'cancelled') as $item) {
                         $menuItemPrice = $item->menuItem->price ?? 0;
 
                         // Add modifier prices if any
@@ -1287,6 +1565,14 @@ class Pos extends Component
 
                 // Now bill the order
                 foreach ($this->orderItemList as $key => $value) {
+                    // Set price context before using price
+                    if ($this->orderTypeId) {
+                        $value->setPriceContext($this->orderTypeId, $this->normalizeDeliveryAppId());
+                        if (isset($this->orderItemVariation[$key])) {
+                            $this->orderItemVariation[$key]->setPriceContext($this->orderTypeId, $this->normalizeDeliveryAppId());
+                        }
+                    }
+
                     $orderItem = OrderItem::create([
                         'order_id' => $order->id,
                         'menu_item_id' => (isset($this->orderItemVariation[$key]) ? $this->orderItemVariation[$key]->menu_item_id : $this->orderItemList[$key]->id),
@@ -1314,6 +1600,9 @@ class Pos extends Component
 
                 $this->printKot($order, $kot);
                 $this->printOrder($order);
+
+                NewOrderCreated::dispatch($order);
+
                 $this->resetPos();
                 return;
             }
@@ -1322,6 +1611,14 @@ class Pos extends Component
         if ($status == 'billed') {
 
             foreach ($this->orderItemList as $key => $value) {
+                // Set price context before using price
+                if ($this->orderTypeId) {
+                    $value->setPriceContext($this->orderTypeId, $this->normalizeDeliveryAppId());
+                    if (isset($this->orderItemVariation[$key])) {
+                        $this->orderItemVariation[$key]->setPriceContext($this->orderTypeId, $this->normalizeDeliveryAppId());
+                    }
+                }
+
                 $taxBreakup = isset($this->orderItemTaxDetails[$key]['tax_breakup']) ? json_encode($this->orderItemTaxDetails[$key]['tax_breakup']) : null;
 
                 $orderItem = OrderItem::create([
@@ -1757,16 +2054,30 @@ class Pos extends Component
         $keyId = $this->selectedModifierItem . '-' . $sortNumber;
         if (isset(explode('_', $this->selectedModifierItem)[1])) {
             $menuItemVariation = MenuItemVariation::find(explode('_', $this->selectedModifierItem)[1]);
+
+            // Set price context BEFORE storing to prevent price flickering
+            if ($this->orderTypeId) {
+                $menuItemVariation->setPriceContext($this->orderTypeId, $this->normalizeDeliveryAppId());
+            }
+
             $this->orderItemVariation[$keyId] = $menuItemVariation;
             $this->selectedModifierItem = explode('_', $this->selectedModifierItem)[0];
+
+            // Set price context on menu item
+            if ($this->orderTypeId && isset($this->orderItemList[$keyId])) {
+                $this->orderItemList[$keyId]->setPriceContext($this->orderTypeId, $this->normalizeDeliveryAppId());
+            }
+
             $this->orderItemAmount[$keyId] = 1 * ($this->orderItemVariation[$keyId]->price ?? $this->orderItemList[$keyId]->price);
         }
 
         $this->itemModifiersSelected[$keyId] = Arr::flatten($modifierIds);
         $this->orderItemQty[$this->selectedModifierItem] = isset($this->orderItemQty[$this->selectedModifierItem]) ? ($this->orderItemQty[$this->selectedModifierItem] + 1) : 1;
 
+        // Get modifier options with price context set
+        $modifierOptions = $this->getModifierOptionsProperty();
         $modifierTotal = collect($this->itemModifiersSelected[$keyId])
-            ->sum(fn($modifierId) => $this->getModifierOptionsProperty()[$modifierId]->price);
+            ->sum(fn($modifierId) => isset($modifierOptions[$modifierId]) ? $modifierOptions[$modifierId]->price : 0);
 
         $this->orderItemModifiersPrice[$keyId] = (1 * (isset($this->itemModifiersSelected[$keyId]) ? $modifierTotal : 0));
 
@@ -1775,7 +2086,16 @@ class Pos extends Component
 
     public function getModifierOptionsProperty()
     {
-        return ModifierOption::whereIn('id', collect($this->itemModifiersSelected)->flatten()->all())->get()->keyBy('id');
+        $modifiers = ModifierOption::whereIn('id', collect($this->itemModifiersSelected)->flatten()->all())->get();
+
+        // Set price context on modifier options
+        if ($this->orderTypeId) {
+            foreach ($modifiers as $modifier) {
+                $modifier->setPriceContext($this->orderTypeId, $this->normalizeDeliveryAppId());
+            }
+        }
+
+        return $modifiers->keyBy('id');
     }
 
     public function saveDeliveryExecutive()
@@ -1881,11 +2201,25 @@ class Pos extends Component
         }
 
         $query = $query->search('item_name', $this->search)->get();
+
+        // Set price context on all menu items
+        if ($this->orderTypeId) {
+            foreach ($query as $menuItem) {
+                $menuItem->setPriceContext($this->orderTypeId, $this->normalizeDeliveryAppId());
+            }
+        }
+
         $showCustomOrderTypes = restaurant()->show_order_type_options;
         $orderTypes = OrderType::where('branch_id', branch()->id)
             ->where('is_active', true)
             ->when(!$showCustomOrderTypes, fn($q) => $q->where('is_default', true))
             ->get();
+
+        if ($orderTypes->count() === 1 && ($orderTypes->first()->slug === 'dine_in' || $orderTypes->first()->slug === 'pickup')) {
+            $this->orderTypeSlug = $orderTypes->first()->slug;
+            $this->orderType = $orderTypes->first()->type;
+            $this->orderTypeId = $orderTypes->first()->id;
+        }
 
         return view('livewire.pos.pos', [
             'menuItems' => $query,
@@ -1924,6 +2258,15 @@ class Pos extends Component
 
         foreach ($this->orderItemAmount as $key => $value) {
             $menuItem = isset($this->orderItemVariation[$key]) ? $this->orderItemVariation[$key]->menuItem : $this->orderItemList[$key];
+
+            // Set price context before using price
+            if ($this->orderTypeId) {
+                $menuItem->setPriceContext($this->orderTypeId, $this->normalizeDeliveryAppId());
+                if (isset($this->orderItemVariation[$key])) {
+                    $this->orderItemVariation[$key]->setPriceContext($this->orderTypeId, $this->normalizeDeliveryAppId());
+                }
+            }
+
             $qty = $this->orderItemQty[$key] ?? 1;
             $basePrice = isset($this->orderItemVariation[$key]) ? $this->orderItemVariation[$key]->price : $menuItem->price;
             $modifierPrice = $this->orderItemModifiersPrice[$key] ?? 0;
@@ -1954,6 +2297,14 @@ class Pos extends Component
 
         // Check if we have session data arrays (for active POS session)
         if (isset($this->orderItemList[$key])) {
+            // Set price context before using price
+            if ($this->orderTypeId) {
+                $this->orderItemList[$key]->setPriceContext($this->orderTypeId, $this->normalizeDeliveryAppId());
+                if (isset($this->orderItemVariation[$key])) {
+                    $this->orderItemVariation[$key]->setPriceContext($this->orderTypeId, $this->normalizeDeliveryAppId());
+                }
+            }
+
             $basePrice = isset($this->orderItemVariation[$key]) ? $this->orderItemVariation[$key]->price : $this->orderItemList[$key]->price;
             $modifierPrice = $this->orderItemModifiersPrice[$key] ?? 0;
             return $basePrice + $modifierPrice;
@@ -1962,6 +2313,19 @@ class Pos extends Component
         // For existing order items (when viewing order details), calculate from the order item itself
         if ($this->orderDetail && isset($this->orderDetail->items[$key])) {
             $orderItem = $this->orderDetail->items[$key];
+
+            // Set price context on menu items and variations
+            if ($this->orderTypeId) {
+                $orderItem->menuItem->setPriceContext($this->orderTypeId, $this->normalizeDeliveryAppId());
+                if ($orderItem->menuItemVariation) {
+                    $orderItem->menuItemVariation->setPriceContext($this->orderTypeId, $this->normalizeDeliveryAppId());
+                }
+                // Set price context on modifier options
+                foreach ($orderItem->modifierOptions as $modifierOption) {
+                    $modifierOption->setPriceContext($this->orderTypeId, $this->normalizeDeliveryAppId());
+                }
+            }
+
             $basePrice = !is_null($orderItem->menuItemVariation) ? $orderItem->menuItemVariation->price : $orderItem->menuItem->price;
             $modifierPrice = $orderItem->modifierOptions->sum('price');
 
@@ -1989,6 +2353,14 @@ class Pos extends Component
     {
         $items = [];
         foreach ($this->orderItemList as $key => $item) {
+            // Set price context before using prices
+            if ($this->orderTypeId) {
+                $item->setPriceContext($this->orderTypeId, $this->normalizeDeliveryAppId());
+                if (isset($this->orderItemVariation[$key])) {
+                    $this->orderItemVariation[$key]->setPriceContext($this->orderTypeId, $this->normalizeDeliveryAppId());
+                }
+            }
+
             $variation = $this->orderItemVariation[$key] ?? null;
             $basePrice = $variation->price ?? $item->price ?? 0;
             $modifiers = [];
@@ -1997,6 +2369,10 @@ class Pos extends Component
                 foreach ($this->itemModifiersSelected[$key] as $modifierId) {
                     $modifier = \App\Models\ModifierOption::find($modifierId);
                     if ($modifier) {
+                        // Set price context for modifier
+                        if ($this->orderTypeId) {
+                            $modifier->setPriceContext($this->orderTypeId, $this->normalizeDeliveryAppId());
+                        }
                         $modifiers[] = [
                             'name' => $modifier->name,
                             'price' => $modifier->price,
@@ -2048,6 +2424,16 @@ class Pos extends Component
         }
         // Ensure quantity is at least 1
         $this->orderItemQty[$id] = max(1, intval($this->orderItemQty[$id]));
+
+        // Set price context before using price
+        if ($this->orderTypeId) {
+            if (isset($this->orderItemVariation[$id])) {
+                $this->orderItemVariation[$id]->setPriceContext($this->orderTypeId, $this->normalizeDeliveryAppId());
+            }
+            if (isset($this->orderItemList[$id])) {
+                $this->orderItemList[$id]->setPriceContext($this->orderTypeId, $this->normalizeDeliveryAppId());
+            }
+        }
 
         // Update the amount based on the new quantity
         $basePrice = $this->orderItemVariation[$id]->price ?? $this->orderItemList[$id]->price;
@@ -2109,5 +2495,30 @@ class Pos extends Component
         $this->reservation = null;
         $this->isSameCustomer = false;
         $this->intendedOrderAction = null;
+    }
+
+    /**
+     * Refresh order data when KOT items are cancelled
+     */
+    public function refreshOrderData($orderId)
+    {
+        // Only refresh if we're currently viewing this order
+        if ($this->orderID == $orderId) {
+            // Refresh the order detail
+            $this->orderDetail = Order::with(['kot.items.menuItem', 'kot.items.menuItemVariation', 'kot.items.modifierOptions'])->find($orderId);
+
+            // Reset and reload order items
+            $this->orderItemList = [];
+            $this->orderItemQty = [];
+            $this->orderItemAmount = [];
+            $this->orderItemVariation = [];
+            $this->itemModifiersSelected = [];
+            $this->itemNotes = [];
+            $this->orderItemModifiersPrice = [];
+            $this->orderItemTaxDetails = [];
+
+            // Reload order items from KOT items
+            $this->setupOrderItems();
+        }
     }
 }

@@ -5,6 +5,7 @@ namespace App\Livewire;
 use App\Models\Kot;
 use Livewire\Component;
 use Carbon\Carbon;
+use App\Enums\OrderStatus;
 
 class CustomerOrderBoard extends Component
 {
@@ -53,17 +54,20 @@ class CustomerOrderBoard extends Component
             ->where('orders.date_time', '>=', $start)
             ->where('orders.date_time', '<=', $end)
             ->with(['order' => function ($query) {
-                $query->select(['id', 'order_number', 'formatted_order_number']);
+                $query->select(['id', 'order_number', 'formatted_order_number', 'order_type_id'])
+                    ->with('orderType:id,order_type_name');
             }])
             ->orderBy('kots.id', 'desc');
 
         $preparing = (clone $baseQuery)
             ->whereIn('kots.status', ['in_kitchen', 'pending_confirmation'])
+            ->whereNotIn('orders.order_status', ['out_for_delivery', 'delivered', 'served'])
             ->limit(15)
             ->get();
 
         $ready = (clone $baseQuery)
             ->where('kots.status', 'food_ready')
+            ->whereNotIn('orders.order_status', ['out_for_delivery', 'delivered', 'served'])
             ->limit(15)
             ->get();
 
@@ -72,6 +76,7 @@ class CustomerOrderBoard extends Component
                 'id' => $kot->order_id,
                 'display_number' => $kot->order?->show_formatted_order_number,
                 'token' => $kot->token_number,
+                'order_type' => $kot->order?->orderType?->order_type_name,
             ];
         })->toArray();
 
@@ -80,6 +85,7 @@ class CustomerOrderBoard extends Component
                 'id' => $kot->order_id,
                 'display_number' => $kot->order?->show_formatted_order_number,
                 'token' => $kot->token_number,
+                'order_type' => $kot->order?->orderType?->order_type_name,
             ];
         })->toArray();
     }

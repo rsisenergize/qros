@@ -13,11 +13,13 @@ class TodayEarnings extends Component
     
     public function mount()
     {
-        $this->orderCount = Order::whereDate('orders.date_time', '>=', now()->startOfDay()->toDateTimeString())->whereDate('orders.date_time', '<=', now()->endOfDay()->toDateTimeString())
+        $tz = timezone();
+        
+        $this->orderCount = Order::whereDate('orders.date_time', '>=', now()->startOfDay()->setTimezone($tz)->toDateTimeString())->whereDate('orders.date_time', '<=', now()->endOfDay()->setTimezone($tz)->toDateTimeString())
             ->where('status', 'paid')
             ->sum('total');
         
-        $yesterdayCount = Order::whereDate('orders.date_time', '>=', now()->subDay()->startOfDay()->toDateTimeString())->whereDate('orders.date_time', '<=', now()->subDay()->endOfDay()->toDateTimeString())
+        $yesterdayCount = Order::whereDate('orders.date_time', '>=', now()->subDay()->startOfDay()->setTimezone($tz)->toDateTimeString())->whereDate('orders.date_time', '<=', now()->subDay()->endOfDay()->setTimezone($tz)->toDateTimeString())
             ->where('status', 'paid')
             ->sum('total');
 

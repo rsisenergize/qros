@@ -7,7 +7,9 @@ use App\Models\OrderItem;
 use App\Traits\HasBranch;
 use App\Models\ItemCategory;
 use App\Models\MenuItemVariation;
+use App\Models\MenuItemPrices;
 use App\Models\MenuItemTranslation;
+use App\Models\DeliveryPlatform;
 use Illuminate\Support\Facades\Cache;
 use App\Scopes\AvailableMenuItemScope;
 use Spatie\Translatable\HasTranslations;
@@ -18,10 +20,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use App\Models\BaseModel;
+use App\Traits\HasContextualPricing;
 
 class MenuItem extends BaseModel
 {
-    use HasFactory, HasBranch, HasTranslations;
+    use HasFactory, HasBranch, HasTranslations, HasContextualPricing;
 
 
     const VEG = 'veg';
@@ -55,16 +58,50 @@ class MenuItem extends BaseModel
 
     protected $appends = [
         'item_photo_url',
+        'contextual_price', // Add contextual_price as computed property
     ];
 
     protected $with = ['translations'];
-
-
 
     protected static function boot()
     {
         parent::boot();
         static::addGlobalScope(new AvailableMenuItemScope());
+    }
+
+    /**
+     * Get contextual price for a specific variation
+     * Usage: $menuItem->getVariationPrice($variationId)
+     * 
+     * @param int $variationId
+     * @return float
+     */
+    public function getVariationPrice(int $variationId): float
+    {
+        if ($this->contextOrderTypeId !== null) {
+            return $this->resolvePrice(
+                $this->contextOrderTypeId,
+                $this->contextDeliveryAppId,
+                $variationId
+            );
+        }
+
+        // Fallback to base variation price
+        $variation = $this->variations()->find($variationId);
+        return $variation ? (float)$variation->price : (float)($this->attributes['price'] ?? 0);
+    }
+
+    /**
+     * Implementation of HasContextualPricing trait
+     * Resolves contextual price from menu_item_prices table
+     * 
+     * @param int $orderTypeId
+     * @param int|null $deliveryAppId
+     * @return float
+     */
+    protected function resolveContextualPrice(int $orderTypeId, ?int $deliveryAppId = null): float
+    {
+        return $this->resolvePrice($orderTypeId, $deliveryAppId, null);
     }
 
     public function translations(): HasMany
@@ -121,6 +158,11 @@ class MenuItem extends BaseModel
     public function variations(): HasMany
     {
         return $this->hasMany(MenuItemVariation::class);
+    }
+
+    public function prices(): HasMany
+    {
+        return $this->hasMany(MenuItemPrices::class);
     }
 
     public function recipes(): HasMany
@@ -253,5 +295,143 @@ class MenuItem extends BaseModel
             'inclusive' => $inclusive,
             'tax_breakdown' => $taxBreakdown
         ];
+    }
+
+    /**
+     * Get price for specific order type and delivery platform
+     */
+    public function getPriceForContext($orderTypeId, $deliveryAppId = null, $variationId = null)
+    {
+        $price = $this->prices()
+            ->where('order_type_id', $orderTypeId)
+            ->where('delivery_app_id', $deliveryAppId)
+            ->where('menu_item_variation_id', $variationId)
+            ->first();
+
+        if ($price) {
+            return $price->final_price;
+        }
+
+        // Fallback to base price
+        if ($variationId) {
+            $variation = $this->variations()->find($variationId);
+            return $variation ? $variation->price : $this->price;
+        }
+
+        return $this->price;
+    }
+
+    /**
+     * Get all pricing data for this menu item
+     */
+    public function getAllPricing()
+    {
+        return $this->prices()->with(['orderType', 'deliveryApp', 'menuItemVariation'])->get();
+    }
+
+    /**
+     * Resolve price for this item considering order type, delivery app and optional variation.
+     * Falls back in order:
+     * - exact match (order_type + app + variation)
+     * - order_type + variation (no app)
+     * - order_type + app (no variation)
+     * - order_type only
+     * - variation base price
+     * - item base price
+     */
+    public function resolvePrice(?int $orderTypeId, ?int $deliveryAppId = null, ?int $variationId = null)
+    {
+        // Try exact match
+        $query = $this->prices()->where('status', true);
+
+        if ($orderTypeId) {
+            $query = $query->where('order_type_id', $orderTypeId);
+        }
+
+        if ($variationId) {
+            $query = $query->where('menu_item_variation_id', $variationId);
+        } else {
+            $query = $query->whereNull('menu_item_variation_id');
+        }
+
+        if ($deliveryAppId) {
+            $query = $query->where('delivery_app_id', $deliveryAppId);
+        } else {
+            $query = $query->whereNull('delivery_app_id');
+        }
+
+        $priceRow = $query->first();
+        if ($priceRow) {
+            return (float)$priceRow->final_price;
+        }
+
+        // Relax delivery app
+        if ($deliveryAppId) {
+            $relaxed = $this->prices()
+                ->where('status', true)
+                ->when($orderTypeId, fn($q) => $q->where('order_type_id', $orderTypeId))
+                ->when($variationId, fn($q) => $q->where('menu_item_variation_id', $variationId), fn($q) => $q->whereNull('menu_item_variation_id'))
+                ->whereNull('delivery_app_id')
+                ->first();
+            if ($relaxed) {
+                $basePrice = (float)$relaxed->final_price;
+                // Apply delivery platform commission to the base price
+                $deliveryPlatform = DeliveryPlatform::find($deliveryAppId);
+                if ($deliveryPlatform && $deliveryPlatform->commission_value > 0) {
+                    return $deliveryPlatform->getPriceWithCommission($basePrice);
+                }
+                return $basePrice;
+            }
+        }
+
+        // Relax variation
+        if ($variationId) {
+            $relaxedVar = $this->prices()
+                ->where('status', true)
+                ->when($orderTypeId, fn($q) => $q->where('order_type_id', $orderTypeId))
+                ->whereNull('menu_item_variation_id')
+                ->when($deliveryAppId, fn($q) => $q->where('delivery_app_id', $deliveryAppId), fn($q) => $q->whereNull('delivery_app_id'))
+                ->first();
+            if ($relaxedVar) {
+                return (float)$relaxedVar->final_price;
+            }
+        }
+
+        // Only order type
+        if ($orderTypeId) {
+            $orderTypeOnly = $this->prices()
+                ->where('status', true)
+                ->where('order_type_id', $orderTypeId)
+                ->whereNull('menu_item_variation_id')
+                ->whereNull('delivery_app_id')
+                ->first();
+            if ($orderTypeOnly) {
+                return (float)$orderTypeOnly->final_price;
+            }
+        }
+
+        // Variation base
+        $basePrice = null;
+        if ($variationId) {
+            $variation = $this->variations()->find($variationId);
+            if ($variation && isset($variation->attributes['price'])) {
+                $basePrice = (float)$variation->attributes['price'];
+            }
+        }
+
+        // Fallback to item base price from database (not accessor)
+        if ($basePrice === null) {
+            $basePrice = (float)($this->attributes['price'] ?? 0);
+        }
+
+        // Apply delivery platform commission if we have a delivery app and no specific pricing
+        if ($deliveryAppId && $basePrice > 0) {
+            $deliveryPlatform = DeliveryPlatform::find($deliveryAppId);
+            if ($deliveryPlatform && $deliveryPlatform->commission_value > 0) {
+                return $deliveryPlatform->getPriceWithCommission($basePrice);
+            }
+        }
+
+        return $basePrice;
     }
 }

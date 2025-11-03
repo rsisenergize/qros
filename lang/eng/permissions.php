@@ -92,7 +92,7 @@ return [
         'Show Kitchen Place' => 'Show Kitchen Place',
         'Create Kitchen Place' => 'Create Kitchen Place',
         'Update Kitchen Place' => 'Update Kitchen Place',
-        'Delete Kitchen Place' => 'Delete Kitchen Place',  
+        'Delete Kitchen Place' => 'Delete Kitchen Place',
         'Update Sms Settings' => 'Update Sms Settings',
         'Delete Kitchen Place' => 'Delete Kitchen Place',
         'Log Cash Register' => 'Log Cash Register',
@@ -108,6 +108,7 @@ return [
         'Close Cash Register' => 'Close Cash Register',
         'Open Cash Register' => 'Open Cash Register',
         'Delete Kitchen Place' => 'Delete Kitchen Place',
+        'Add Discount on POS' => 'Add Discount on POS',
     ],
 
     'modules' => [

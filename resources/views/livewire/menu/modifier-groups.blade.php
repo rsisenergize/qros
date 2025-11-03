@@ -14,7 +14,9 @@
                     </form>
                 </div>
 
-                <x-button type='button' wire:click="showAddModifierGroupModal">@lang('modules.modifier.addModifierGroup')</x-button>
+                <x-primary-link href="{{ route('modifier-groups.create') }}" wire:navigate>
+                    @lang('modules.modifier.addModifierGroup')
+                </x-primary-link>
             </div>
         </div>
     </div>
@@ -49,11 +51,10 @@
                                     @endforelse
                                 </td>
                                 <td class="py-2.5 px-4 space-x-2 whitespace-nowrap ltr:text-right rtl:text-left">
-                                    <x-secondary-button-table wire:click='showEditModifierGroupModal({{ $group->id }})'
-                                        wire:key='edit-cat-button-{{ $group->id }}'>
+                                    <x-secondary-link href="{{ route('modifier-groups.edit', $group->id) }}" wire:navigate>
                                         <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M17.414 2.586a2 2 0 0 0-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 0 0 0-2.828"/><path fill-rule="evenodd" d="M2 6a2 2 0 0 1 2-2h4a1 1 0 0 1 0 2H4v10h10v-4a1 1 0 1 1 2 0v4a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2z" clip-rule="evenodd"/></svg>
                                         @lang('app.update')
-                                    </x-secondary-button-table>
+                                    </x-secondary-link>
 
                                     <x-danger-button-table wire:click="showDeleteModifier({{ $group->id }})">
                                         <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M9 2a1 1 0 0 0-.894.553L7.382 4H4a1 1 0 0 0 0 2v10a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V6a1 1 0 1 0 0-2h-3.382l-.724-1.447A1 1 0 0 0 11 2zM7 8a1 1 0 0 1 2 0v6a1 1 0 1 1-2 0zm5-1a1 1 0 0 0-1 1v6a1 1 0 1 0 2 0V8a1 1 0 0 0-1-1" clip-rule="evenodd"/></svg>

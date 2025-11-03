@@ -13,10 +13,24 @@ class ItemVariations extends Component
     public $variationPrice;
     public $showEditVariationsModal = false;
     public $showDeleteVariationsModal = false;
+    public $orderTypeId;
+    public $deliveryAppId;
 
-    public function mount($menuItem)
+    public function mount($menuItem, $orderTypeId = null, $deliveryAppId = null)
     {
         $this->menuItem = $menuItem->load('variations');
+        $this->orderTypeId = $orderTypeId;
+        $this->deliveryAppId = $deliveryAppId;
+        
+        // Set price context on the menu item
+        if ($this->orderTypeId) {
+            $this->menuItem->setPriceContext($this->orderTypeId, $this->deliveryAppId);
+            
+            // Set price context on all variations so they can use ->price directly
+            foreach ($this->menuItem->variations as $variation) {
+                $variation->setPriceContext($this->orderTypeId, $this->deliveryAppId);
+            }
+        }
     }
 
     public function setItemVariation($id)

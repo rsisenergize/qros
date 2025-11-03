@@ -11,16 +11,20 @@ use Illuminate\Broadcasting\PresenceChannel;
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 
-class NewOrderCreated
+class NewOrderCreated implements ShouldBroadcast
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
+
+    public $orderId;
+    public $orderNumber;
 
     /**
      * Create a new event instance.
      */
     public function __construct(public Order $order)
     {
-        //
+        $this->orderId = $order->id;
+        $this->orderNumber = $order->show_formatted_order_number;
     }
 
     /**
@@ -31,7 +35,30 @@ class NewOrderCreated
     public function broadcastOn(): array
     {
         return [
-            new PrivateChannel('new-order'),
+            new Channel('orders'),
+        ];
+    }
+
+    /**
+     * The event's broadcast name.
+     *
+     * @return string
+     */
+    public function broadcastAs()
+    {
+        return 'order.created';
+    }
+
+    /**
+     * Get the data to broadcast.
+     *
+     * @return array
+     */
+    public function broadcastWith()
+    {
+        return [
+            'order_id' => $this->orderId,
+            'order_number' => $this->orderNumber,
         ];
     }
 }

@@ -158,7 +158,7 @@
                 return false;
             }
 
-            /*$.easyAjax({
+            $.easyAjax({
                 type: 'POST',
                 url: "{{ route('purchase-verified') }}",
                 data: $("#verify-form").serialize(),
@@ -174,9 +174,7 @@
                 error: function(xhr) {
                     showError(xhr);
                 }
-            });*/
-            // Always show success regardless of response
-            showSuccess({});
+            });
             return false;
         }
 

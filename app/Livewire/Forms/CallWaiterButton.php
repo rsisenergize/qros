@@ -17,9 +17,11 @@ class CallWaiterButton extends Component
     public $shopBranch;
     public $showTableSelection = false;
     public $table;
+    public $initialTableNumber; // Store the original table number from QR code
 
     public function mount()
     {
+        $this->initialTableNumber = $this->tableNumber; // Store initial value
         $this->tableNumber = $this->tableNumber;
         if ($this->tableNumber) {
             $this->table = Table::where('id', $this->tableNumber)->first();
@@ -60,18 +62,30 @@ class CallWaiterButton extends Component
         $count = WaiterRequest::where('status', 'pending')->where('branch_id', $this->shopBranch->id)->distinct('table_id')->count();
 
         event(new ActiveWaiterRequestCreatedEvent($count));
-        
+
         $this->dispatch('newWaiterRequest');
         $this->dispatch('waiterRequestCreated', ['count' => $count, 'table_id' => $this->tableNumber]);
 
-        $this->tableNumber = null;
-        $this->table = null;
+        // If table was initially provided (from QR code), keep it. Otherwise, reset it.
+        if ($this->initialTableNumber) {
+            $this->tableNumber = $this->initialTableNumber;
+            $this->table = Table::where('id', $this->initialTableNumber)->first();
+        } else {
+            $this->tableNumber = null;
+            $this->table = null;
+        }
     }
 
     public function cancelCall()
     {
-        $this->tableNumber = null;
-        $this->table = null;
+        // If table was initially provided (from QR code), restore it. Otherwise, reset it.
+        if ($this->initialTableNumber) {
+            $this->tableNumber = $this->initialTableNumber;
+            $this->table = Table::where('id', $this->initialTableNumber)->first();
+        } else {
+            $this->tableNumber = null;
+            $this->table = null;
+        }
         $this->showConfirmation = false;
         $this->showTableSelection = false;
     }

@@ -39,6 +39,8 @@ return array(
     'dateTime' => 'Date & Time',
     'change' => 'Change',
     'changePassword' => 'Change Password',
+    'changeStatus' => 'Change Status',
+    'selectNewStatus' => 'Select a new status for this item',
     'add' => 'Add',
     'menu' => 'Menu',
     'createAccount' => 'Create a Account',
@@ -255,4 +257,6 @@ return array(
     'via_pos' => 'POS',
     'via_shop' => 'Shop',
     'via_kiosk' => 'Kiosk',
+    'toggleDarkMode' => 'Toggle Dark Mode',
+
 );

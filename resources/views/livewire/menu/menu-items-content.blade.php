@@ -35,7 +35,9 @@
                         {{ __('modules.menu.bulkUpload') }}
                     </x-secondary-link>
 
-                    <x-button type='button' wire:click="$set('showAddMenuItem', true)" >@lang('modules.menu.addMenuItem')</x-button>
+                    <x-primary-link href="{{ route('menu-items.create') }}" wire:navigate>
+                        @lang('modules.menu.addMenuItem')
+                    </x-primary-link>
                     @endif
                 </div>
             </div>
@@ -44,16 +46,5 @@
 
     <livewire:menu.menu-items :search='$search' key='menu-item-{{ microtime() }}' />
 
-
-    <!-- Product Drawer -->
-    <x-right-modal wire:model.live="showAddMenuItem">
-        <x-slot name="title">
-            {{ __("modules.menu.addMenuItem") }}
-        </x-slot>
-
-        <x-slot name="content">
-            @livewire('forms.addMenuItem')
-        </x-slot>
-    </x-right-modal>
 
 </div>

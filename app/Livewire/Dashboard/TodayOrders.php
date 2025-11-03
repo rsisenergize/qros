@@ -5,6 +5,7 @@ namespace App\Livewire\Dashboard;
 use App\Events\TodayOrdersUpdated;
 use App\Models\Kot;
 use App\Models\Order;
+use Carbon\Carbon;
 use Jantinnerezo\LivewireAlert\LivewireAlert;
 use Livewire\Component;
 
@@ -15,15 +16,19 @@ class TodayOrders extends Component
 
     public function render()
     {
-        $count = Order::whereDate('orders.date_time', '>=', now()->startOfDay()->toDateTimeString())
-            ->whereDate('orders.date_time', '<=', now()->endOfDay()->toDateTimeString())
+        $tz = timezone();
+        $start = Carbon::now($tz)->startOfDay()->setTimezone($tz)->toDateTimeString();
+        $end = Carbon::now($tz)->endOfDay()->setTimezone($tz)->toDateTimeString();
+        
+        $count = Order::whereDate('orders.date_time', '>=', $start)
+            ->whereDate('orders.date_time', '<=', $end)
             ->where('status', '<>', 'canceled')
             ->where('status', '<>', 'draft')
             ->count();
 
         $todayKotCount = Kot::join('orders', 'kots.order_id', '=', 'orders.id')
-            ->whereDate('kots.created_at', '>=', now()->startOfDay()->toDateTimeString())
-            ->whereDate('kots.created_at', '<=', now()->endOfDay()->toDateTimeString())
+            ->whereDate('kots.created_at', '>=', $start)
+            ->whereDate('kots.created_at', '<=', $end)
             ->where('orders.status', '<>', 'canceled')
             ->where('orders.status', '<>', 'draft')
             ->count();

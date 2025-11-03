@@ -33,7 +33,6 @@
         "maatwebsite/excel": "^3.1",
         "macellan/laravel-zip": "^1.0",
         "mhmiton/laravel-modules-livewire": "^5.0",
-        "mike42/escpos-php": "^4.0",
         "nwidart/laravel-modules": "*",
         "opcodesio/log-viewer": "^3.15",
         "paypal/rest-api-sdk-php": "dev-laravel10",

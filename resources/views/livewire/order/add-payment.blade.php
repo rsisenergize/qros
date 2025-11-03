@@ -157,13 +157,13 @@
                                                     <span>+ {{ currency_format($order->tip_amount, restaurant()->currency_id) }}</span>
                                                 </div>
                                             </div>
-                                            
+
                                             <!-- Grand Total - Clickable -->
-                                            <div class="flex justify-between items-center cursor-pointer text-gray-800 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded" 
+                                            <div class="flex justify-between items-center cursor-pointer text-gray-800 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded"
                                                 @click="showTipBreakdown = !showTipBreakdown">
                                                 <span class="flex items-center gap-1">
                                                     {{ __('modules.order.grandTotal') }}
-                                                    <svg class="w-3 h-3 text-current transition-transform" 
+                                                    <svg class="w-3 h-3 text-current transition-transform"
                                                         :class="showTipBreakdown ? 'rotate-180' : ''"
                                                         fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
@@ -312,7 +312,7 @@
                                 </div>
                                 <button wire:click="addNewSplit"
                                     class="px-3 py-2 text-sm border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 shrink-0">
-                                    + New Split
+                                    + {{ __('modules.order.newSplit') }}
                                 </button>
                             </div>
                             <div class="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4 content-start mt-2">
@@ -361,14 +361,14 @@
                                 </div>
                                 <button wire:click="addNewCustomSplit"
                                     class="px-3 py-2 text-sm border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 shrink-0">
-                                    + New Split
+                                    + {{ __('modules.order.newSplit') }}
                                 </button>
                             </div>
                             <div class="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4 content-start mt-2">
                                 @foreach($customSplits as $splitNumber)
                                     <div class="flex items-center gap-4 p-3 bg-gray-50 dark:bg-gray-600 rounded-lg">
                                         <div class="flex-1 flex justify-between items-center gap-3">
-                                            <span>Split {{ $splitNumber }}</span>
+                                            <span>{{ __('modules.order.split') }} {{ $splitNumber }}</span>
                                             <input type="number" min="0" step="0.01"
                                                 wire:model.live="splits.{{ $splitNumber }}.amount" wire:keyup="updateBalanceAmount"
                                                 class="w-32 rounded-lg border-gray-300 text-right"
@@ -398,7 +398,7 @@
                                             <button wire:click="$set('activeSplitId', {{ $splitId }})"
                                                 class="px-4 py-2 rounded-lg text-sm font-medium
                                                 {{ $activeSplitId === $splitId ? 'bg-skin-base text-white' : 'border hover:bg-gray-50 dark:hover:bg-gray-700' }}">
-                                                <span>Split {{ $splitId }}</span>
+                                                <span>{{ __('modules.order.split') }} {{ $splitId }}</span>
                                             </button>
                                             @if(count($splits) > 1 && $splitId !== 1)
                                                 <button wire:click="removeItemSplit({{ $splitId }})"
@@ -585,13 +585,13 @@
                                                     <span>+ {{ currency_format($order->tip_amount, restaurant()->currency_id) }}</span>
                                                 </div>
                                             </div>
-                                            
+
                                             <!-- Grand Total - Clickable -->
-                                            <div class="flex justify-between items-center cursor-pointer text-gray-800 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded" 
+                                            <div class="flex justify-between items-center cursor-pointer text-gray-800 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded"
                                                 @click="showTipBreakdown = !showTipBreakdown">
                                                 <span class="flex items-center gap-1">
                                                     {{ __('modules.order.grandTotal') }}
-                                                    <svg class="w-3 h-3 text-current transition-transform" 
+                                                    <svg class="w-3 h-3 text-current transition-transform"
                                                         :class="showTipBreakdown ? 'rotate-180' : ''"
                                                         fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
@@ -616,7 +616,7 @@
                                         <span>{{ __('modules.order.payableAmount') }}</span>
                                         <span class="font-bold">{{ currency_format(($order->total - $paidAmount), restaurant()->currency_id) }}</span>
                                     </div>
-                                    
+
                                     <!-- Split-specific information -->
                                     <template x-if="splitType === 'equal'">
                                         <div class="flex justify-between text-blue-600 dark:text-blue-400 pt-2 border-t">
@@ -624,7 +624,7 @@
                                             <span class="font-medium">{{ currency_format(($order->total - $paidAmount) / $numberOfSplits, restaurant()->currency_id) }}</span>
                                         </div>
                                     </template>
-                                    
+
                                     <template x-if="splitType === 'custom'">
                                         <div>
                                             <div class="flex justify-between text-blue-600 dark:text-blue-400 pt-2 border-t">
@@ -643,7 +643,7 @@
                                             @endif
                                         </div>
                                     </template>
-                                    
+
                                     <template x-if="splitType === 'items'">
                                         <div>
                                             <div class="flex justify-between text-blue-600 dark:text-blue-400 pt-2 border-t">
