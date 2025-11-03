@@ -72,6 +72,7 @@ class PermissionSeeder extends Seeder
             ['guard_name' => 'web', 'name' => 'Show Order', 'module_id' => $orderModule->id],
             ['guard_name' => 'web', 'name' => 'Update Order', 'module_id' => $orderModule->id],
             ['guard_name' => 'web', 'name' => 'Delete Order', 'module_id' => $orderModule->id],
+            ['guard_name' => 'web', 'name' => 'Add Discount on POS', 'module_id' => $orderModule->id],
 
             ['guard_name' => 'web', 'name' => 'Create Customer', 'module_id' => $customerModule->id],
             ['guard_name' => 'web', 'name' => 'Show Customer', 'module_id' => $customerModule->id],

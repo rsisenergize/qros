@@ -16,6 +16,7 @@ class Printer extends Model
     use HasRestaurant {
         HasRestaurant::booted as hasRestaurantBooted;
     }
+
     protected $casts = [
         'kots' => 'array',
         'orders' => 'array',

@@ -45,9 +45,7 @@ class OrderController extends Controller
 
         $content = view('order.print', compact('order', 'receiptSettings', 'taxDetails', 'payment', 'taxMode', 'totalTaxAmount', 'width', 'thermal'));
 
-        if ($generateImage) {
-            // return $this->printOrderImage($order, $content);
-        }
+
 
         return $content;
     }
@@ -102,26 +100,5 @@ class OrderController extends Controller
         $pdf->setPaper('A4', 'portrait');
 
         return $pdf->output();
-    }
-
-    public function printOrderImage($order, $content)
-    {
-        $filename = 'order-' . $order->id . '.png';
-        $path = Files::UPLOAD_FOLDER . '/print/' . $filename;
-        $absolutePath = public_path($path);
-
-        try {
-            // For 80mm thermal printer, set width to 576px (standard for 80mm printers)
-            \Spatie\Browsershot\Browsershot::html(
-                $content
-            )
-                ->windowSize(100, 100) // Set a reasonable initial height
-                ->deviceScaleFactor(2) // Sharper print for thermal printers
-                ->fullPage() // Dynamically adjust height based on content
-                ->fullWidth() // Dynamically adjust height based on content
-                ->save($absolutePath);
-        } catch (\Exception $e) {
-        }
-        return $filename;
     }
 }

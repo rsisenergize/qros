@@ -122,7 +122,8 @@
 
         <div id="tooltip-toggle" role="tooltip"
           class="absolute z-10 invisible inline-block px-3 py-2 text-sm font-medium text-white transition-opacity duration-300 bg-gray-900 rounded-lg shadow-sm opacity-0 tooltip">
-          Toggle dark mode
+          @lang('app.toggleDarkMode')
+
           <div class="tooltip-arrow" data-popper-arrow></div>
         </div>
 
@@ -201,12 +202,12 @@
                   class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-600 dark:hover:text-white"
                   role="menuitem">@lang('menu.customerDisplay')</a>
               </li>
-              @endif
               <li>
-                <a href="{{ route('customer.order-board') }}" target="_blank" 
+                <a href="{{ route('customer.order-board') }}" target="_blank"
                   class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-600 dark:hover:text-white"
                   role="menuitem">@lang('modules.order.customerOrderBoard')</a>
               </li>
+              @endif
 
               @if (module_enabled('Kiosk') && in_array('Kiosk', restaurant_modules()))
                 <li>

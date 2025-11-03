@@ -426,7 +426,7 @@
                         <div>
                             <x-label for="selectPaypalEnvironment" :value="__('modules.settings.selectEnvironment')" required/>
                             <x-select id="selectPaypalEnvironment" class="block w-full mt-1" wire:model.live="selectPaypalEnvironment">
-                                <option value="test">@lang('app.test')</option>
+                                <option value="sandbox">@lang('app.test')</option>
                                 <option value="live">@lang('app.live')</option>
                             </x-select>
                             <x-input-error for="selectPaypalEnvironment" class="mt-2"/>
@@ -581,7 +581,7 @@
                         <div>
                             <x-label for="selectPaystackEnvironment" :value="__('modules.settings.selectEnvironment')" required/>
                             <x-select id="selectPaystackEnvironment" class="block w-full mt-1" wire:model.live="selectPaystackEnvironment">
-                                <option value="test">@lang('app.test')</option>
+                                <option value="sandbox">@lang('app.test')</option>
                                 <option value="live">@lang('app.live')</option>
                             </x-select>
                             <x-input-error for="selectPaystackEnvironment" class="mt-2"/>
@@ -740,6 +740,9 @@
                         </div>
 
                     @endif
+                    <div>
+                        <x-button>@lang('app.save')</x-button>
+                    </div>
 
                 </div>
             </form>

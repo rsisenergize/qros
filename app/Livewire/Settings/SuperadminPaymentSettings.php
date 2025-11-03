@@ -549,7 +549,7 @@ class SuperadminPaymentSettings extends Component
 
                 if ($response->successful()) {
                     $this->paymentGateway->update([
-                        'paystack_type' => $this->selectPaystackEnvironment,
+                        'paystack_mode' => $this->selectPaystackEnvironment,
                         'live_paystack_key' => $this->paystackKey,
                         'live_paystack_secret' => $this->paystackSecret,
                         'live_paystack_merchant_email' => $this->paystackMerchantEmail,

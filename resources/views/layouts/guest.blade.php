@@ -271,9 +271,9 @@
     @include('sections.pusher-script')
 
      <!-- Print Image Handler -->
-     <script src="https://cdn.jsdelivr.net/npm/html-to-image@1.11.11/dist/html-to-image.min.js"></script>
-     <script src="{{ asset('js/print-image-handler.js') }}"></script>
-     
+  <script src="https://cdn.jsdelivr.net/npm/html-to-image@1.11.11/dist/html-to-image.min.js" data-navigate-track></script>
+  <script src="{{ asset('js/print-image-handler.js') }}" data-navigate-track></script>
+
     @stack('scripts')
 </body>
 

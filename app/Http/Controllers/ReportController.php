@@ -40,4 +40,9 @@ class ReportController extends Controller
     {
         return view('reports.print-log');
     }
+
+    public function deliveryReport()
+    {
+        return view('reports.delivery-app-report');
+    }
 }

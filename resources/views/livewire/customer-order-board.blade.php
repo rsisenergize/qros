@@ -13,7 +13,12 @@
                     @forelse($preparingOrders as $o)
                         @php($num = $o['token'] ?? $o['display_number'])
                         <div class="rounded-md bg-gray-800 shadow-md">
-                            <div class="px-6 py-5 text-center text-4xl font-extrabold tracking-wide">{{ $num }}</div>
+                            <div class="px-6 py-5 text-center">
+                                <div class="text-4xl font-extrabold tracking-wide">{{ $num }}</div>
+                                @if(isset($o['order_type']))
+                                    <div class="text-sm text-gray-300 mt-2">{{ $o['order_type'] }}</div>
+                                @endif
+                            </div>
                         </div>
                     @empty
                         <div class="col-span-3 text-center text-gray-300 text-xl mt-10">@lang('modules.order.noOrders')</div>
@@ -35,7 +40,12 @@
                     @forelse($readyOrders as $o)
                         @php($num = $o['token'] ?? $o['display_number'])
                         <div class="rounded-md bg-green-600 shadow-md">
-                            <div class="px-8 py-6 text-center text-4xl font-extrabold tracking-wide">{{ $num }}</div>
+                            <div class="px-8 py-6 text-center">
+                                <div class="text-4xl font-extrabold tracking-wide">{{ $num }}</div>
+                                @if(isset($o['order_type']))
+                                    <div class="text-sm text-green-100 mt-2">{{ $o['order_type'] }}</div>
+                                @endif
+                            </div>
                         </div>
                     @empty
                         <div class="col-span-2 text-center text-gray-400 text-xl mt-10">@lang('modules.order.noOrders')</div>

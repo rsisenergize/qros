@@ -10,7 +10,6 @@ use App\Models\User;
 use App\Models\Order;
 use App\Models\Table;
 use App\Models\Branch;
-use Livewire\Livewire;
 use App\Models\Payment;
 use App\Models\Printer;
 use App\Models\Currency;
@@ -23,11 +22,11 @@ use App\Models\Restaurant;
 use App\Models\FileStorage;
 use App\Models\Reservation;
 use App\Models\ItemCategory;
+use App\Models\DeliveryPlatform;
 use App\Observers\KotObserver;
 use App\Observers\TaxObserver;
 use App\Models\ExpenseCategory;
 use App\Models\KotCancelReason;
-use App\Models\LanguageSetting;
 use App\Observers\AreaObserver;
 use App\Observers\MenuObserver;
 use App\Observers\UserObserver;
@@ -39,7 +38,6 @@ use App\Observers\BranchObserver;
 use App\Models\ReservationSetting;
 use App\Observers\PaymentObserver;
 use App\Observers\PrinterObserver;
-use App\Http\Middleware\SuperAdmin;
 use App\Models\NotificationSetting;
 use App\Models\TableSession;
 use App\Observers\TableSessionObserver;
@@ -48,6 +46,7 @@ use App\Observers\CustomerObserver;
 use App\Observers\ExpensesObserver;
 use App\Observers\KotPlaceObserver;
 use App\Observers\MenuItemObserver;
+use App\Observers\DeliveryPlatformObserver;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\URL;
 use App\Observers\OrderItemObserver;
@@ -63,15 +62,14 @@ use App\Observers\PaymentGatewayObserver;
 use Illuminate\Database\Eloquent\Builder;
 use App\Observers\ExpenseCategoryObserver;
 use App\Observers\KotCancelReasonObserver;
-use App\Observers\LanguageSettingObserver;
-use Modules\Kitchen\Http\Livewire\Kitchens;
+
 use App\Observers\DeliveryExecutiveObserver;
 use App\Observers\RestaurantChargesObserver;
 use App\Observers\ReservationSettingObserver;
-use Modules\Kitchen\Http\Livewire\AddKitchen;
+
 use Spatie\Translatable\Facades\Translatable;
 use App\Observers\NotificationSettingObserver;
-use Modules\Kitchen\Http\Livewire\KitchenPlaces;
+
 use App\Observers\OrderTypeObserver;
 use App\Models\OrderType;
 use App\Observers\KotItemObserver;
@@ -130,6 +128,7 @@ class AppServiceProvider extends ServiceProvider
         Printer::observe(PrinterObserver::class);
         KotCancelReason::observe(KotCancelReasonObserver::class);
         OrderType::observe(OrderTypeObserver::class);
+        DeliveryPlatform::observe(DeliveryPlatformObserver::class);
         TableSession::observe(TableSessionObserver::class);
 
         // Implicitly grant "Admin" role all permissions
@@ -152,5 +151,4 @@ class AppServiceProvider extends ServiceProvider
 
         // Model::preventLazyLoading(app()->environment('development'));
     }
-
 }

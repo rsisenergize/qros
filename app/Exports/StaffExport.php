@@ -32,7 +32,7 @@ class StaffExport implements WithMapping, FromCollection, WithHeadings, WithStyl
         return [
             $customer->name,
             $customer->email,
-            $customer->getRoleNames()[0]
+            $customer->roles->pluck('display_name')[0]
         ];
     }
 
@@ -56,7 +56,8 @@ class StaffExport implements WithMapping, FromCollection, WithHeadings, WithStyl
 
     public function collection()
     {
-        return User::withoutGlobalScope(BranchScope::class)
+        return User::withoutGlobalScope(BranchScope::class, RestaurantScope::class)
+            ->where('restaurant_id', restaurant()->id)
             ->where(function($q) {
                 return $q->where('branch_id', branch()->id)
                     ->orWhereNull('branch_id');

@@ -7,14 +7,19 @@ use App\Models\User;
 use App\Models\ReceiptSetting;
 use App\Models\KotCancelReason;
 use App\Models\PusherSetting;
+use App\Models\DeliveryPlatform;
 use Carbon\Carbon;
 use Livewire\Attributes\On;
 use Livewire\Component;
+use Jantinnerezo\LivewireAlert\LivewireAlert;
+use Illuminate\Support\Facades\Log;
 
 class Orders extends Component
 {
 
-    protected $listeners = ['refreshOrders' => '$refresh'];
+    use LivewireAlert;
+
+    protected $listeners = ['refreshOrders' => '$refresh', 'newOrderCreated' => 'handleNewOrder', 'viewOrder' => 'viewOrder'];
 
     public $orderID;
     public $filterOrders;
@@ -27,17 +32,22 @@ class Orders extends Component
     public $pollingEnabled = true;
     public $pollingInterval = 10;
     public $filterOrderType = '';
+    public $deliveryApps;
+    public $filterDeliveryApp = '';
     public $cancelReasons;
     public $selectedCancelReason;
     public $cancelComment;
 
     public function mount()
     {
+        $tz = timezone();
+        
         // Load date range type from cookie
         $this->dateRangeType = request()->cookie('orders_date_range_type', 'today');
-        $this->startDate = now()->startOfWeek()->format('m/d/Y');
-        $this->endDate = now()->endOfWeek()->format('m/d/Y');
+        $this->startDate = Carbon::now($tz)->startOfWeek()->format('m/d/Y');
+        $this->endDate = Carbon::now($tz)->endOfWeek()->format('m/d/Y');
         $this->waiters = User::role('Waiter_' . restaurant()->id)->get();
+        $this->deliveryApps = DeliveryPlatform::all();
 
         // Load polling settings from cookies
         $this->pollingEnabled = filter_var(request()->cookie('orders_polling_enabled', 'true'), FILTER_VALIDATE_BOOLEAN);
@@ -54,6 +64,100 @@ class Orders extends Component
         if (user()->hasRole('Waiter_' . user()->restaurant_id)) {
             $this->filterWaiter = user()->id;
         }
+
+        // Initialize session for new orders tracking
+        if (!session()->has('orders_count')) {
+            $count = $this->getOrdersCount();
+            session(['orders_count' => $count]);
+        }
+    }
+
+    public function handleNewOrder($data = null)
+    {
+        $recentOrder = Order::with('table', 'customer')
+            ->where('status', '<>', 'draft')
+            ->orderBy('id', 'desc')
+            ->first();
+
+        if ($recentOrder) {
+            // Build order description
+            $orderDescription = __('New order received') . ': ' . $recentOrder->show_formatted_order_number;
+
+            // Add table info if it exists
+            if ($recentOrder->table && $recentOrder->table->table_code) {
+                $orderDescription .= ' - ' . __('app.table') . ': ' . $recentOrder->table->table_code;
+            }
+            // Add customer info for delivery/pickup orders
+            else if ($recentOrder->customer && $recentOrder->customer->name) {
+                $orderDescription .= ' - ' . $recentOrder->customer->name;
+            }
+
+            // Add order type
+            if ($recentOrder->order_type) {
+                $orderType = ucfirst(str_replace('_', ' ', $recentOrder->order_type));
+                $orderDescription .= ' (' . $orderType . ')';
+            }
+
+            $this->confirm($orderDescription, [
+                'position' => 'center',
+                'confirmButtonText' => __('View Order'),
+                'confirmButtonColor' => '#16a34a',
+                'onConfirmed' => 'viewOrder',
+                'showCancelButton' => true,
+                'cancelButtonText' => __('app.close'),
+                'data' => [
+                    'orderID' => $recentOrder->id
+                ]
+            ]);
+        }
+
+        $count = $this->getOrdersCount();
+        session(['orders_count' => $count]);
+
+        $this->dispatch('$refresh');
+    }
+
+    public function viewOrder($data)
+    {
+        Log::info('viewOrder called with data:', ['data' => $data]);
+
+        if (is_array($data) && isset($data['orderID'])) {
+            Log::info('Redirecting to order:', ['order_id' => $data['orderID']]);
+            $orderId = $data['orderID'];
+            $url = route('pos.kot', [$orderId]) . '?show-order-detail=true';
+            Log::info('Redirect URL:', ['url' => $url]);
+
+            // Use JavaScript redirect for better compatibility with LivewireAlert
+            $this->js("window.location.href = '{$url}'");
+            return;
+        }
+
+        Log::warning('viewOrder: Invalid data format', ['data' => $data]);
+    }
+
+    public function refreshNewOrders()
+    {
+        $this->dispatch('$refresh');
+    }
+
+    private function getOrdersCount()
+    {
+        $tz = timezone();
+
+        $start = Carbon::createFromFormat('m/d/Y', $this->startDate, $tz)
+            ->startOfDay()
+            ->setTimezone('UTC')
+            ->toDateTimeString();
+
+        $end = Carbon::createFromFormat('m/d/Y', $this->endDate, $tz)
+            ->endOfDay()
+            ->setTimezone('UTC')
+            ->toDateTimeString();
+
+        return Order::where('status', '<>', 'draft')
+            ->where('orders.date_time', '>=', $start)
+            ->where('orders.date_time', '<=', $end)
+            ->count();
     }
 
     public function updatedDateRangeType($value)
@@ -73,50 +177,52 @@ class Orders extends Component
 
     public function setDateRange()
     {
+        $tz = timezone();
+        
         switch ($this->dateRangeType) {
             case 'today':
-                $this->startDate = now()->startOfDay()->format('m/d/Y');
-                $this->endDate = now()->startOfDay()->format('m/d/Y');
+                $this->startDate = Carbon::now($tz)->startOfDay()->format('m/d/Y');
+                $this->endDate = Carbon::now($tz)->startOfDay()->format('m/d/Y');
                 break;
 
             case 'currentWeek':
-                $this->startDate = now()->startOfWeek()->format('m/d/Y');
-                $this->endDate = now()->endOfWeek()->format('m/d/Y');
+                $this->startDate = Carbon::now($tz)->startOfWeek()->format('m/d/Y');
+                $this->endDate = Carbon::now($tz)->endOfWeek()->format('m/d/Y');
                 break;
 
             case 'lastWeek':
-                $this->startDate = now()->subWeek()->startOfWeek()->format('m/d/Y');
-                $this->endDate = now()->subWeek()->endOfWeek()->format('m/d/Y');
+                $this->startDate = Carbon::now($tz)->subWeek()->startOfWeek()->format('m/d/Y');
+                $this->endDate = Carbon::now($tz)->subWeek()->endOfWeek()->format('m/d/Y');
                 break;
 
             case 'last7Days':
-                $this->startDate = now()->subDays(7)->format('m/d/Y');
-                $this->endDate = now()->startOfDay()->format('m/d/Y');
+                $this->startDate = Carbon::now($tz)->subDays(7)->format('m/d/Y');
+                $this->endDate = Carbon::now($tz)->startOfDay()->format('m/d/Y');
                 break;
 
             case 'currentMonth':
-                $this->startDate = now()->startOfMonth()->format('m/d/Y');
-                $this->endDate = now()->endOfMonth()->format('m/d/Y');
+                $this->startDate = Carbon::now($tz)->startOfMonth()->format('m/d/Y');
+                $this->endDate = Carbon::now($tz)->endOfMonth()->format('m/d/Y');
                 break;
 
             case 'lastMonth':
-                $this->startDate = now()->subMonth()->startOfMonth()->format('m/d/Y');
-                $this->endDate = now()->subMonth()->endOfMonth()->format('m/d/Y');
+                $this->startDate = Carbon::now($tz)->subMonth()->startOfMonth()->format('m/d/Y');
+                $this->endDate = Carbon::now($tz)->subMonth()->endOfMonth()->format('m/d/Y');
                 break;
 
             case 'currentYear':
-                $this->startDate = now()->startOfYear()->format('m/d/Y');
-                $this->endDate = now()->endOfYear()->format('m/d/Y');
+                $this->startDate = Carbon::now($tz)->startOfYear()->format('m/d/Y');
+                $this->endDate = Carbon::now($tz)->endOfYear()->format('m/d/Y');
                 break;
 
             case 'lastYear':
-                $this->startDate = now()->subYear()->startOfYear()->format('m/d/Y');
-                $this->endDate = now()->subYear()->endOfYear()->format('m/d/Y');
+                $this->startDate = Carbon::now($tz)->subYear()->startOfYear()->format('m/d/Y');
+                $this->endDate = Carbon::now($tz)->subYear()->endOfYear()->format('m/d/Y');
                 break;
 
             default:
-                $this->startDate = now()->startOfWeek()->format('m/d/Y');
-                $this->endDate = now()->endOfWeek()->format('m/d/Y');
+                $this->startDate = Carbon::now($tz)->startOfWeek()->format('m/d/Y');
+                $this->endDate = Carbon::now($tz)->endOfWeek()->format('m/d/Y');
                 break;
         }
     }
@@ -152,7 +258,7 @@ class Orders extends Component
         $order->cancel_comment = $this->cancelComment;
         $order->save();
 
-        $this->dispatchBrowserEvent('orderCancelled', ['message' => __('Order cancelled successfully.')]);
+        $this->dispatchBrowserEvent('orderCancelled', ['message' => __('messages.orderCanceled')]);
     }
 
     public function render()
@@ -171,7 +277,7 @@ class Orders extends Component
             ->toDateTimeString();
 
         $orders = Order::withCount('items')
-            ->with('table', 'waiter', 'customer')
+            ->with('table', 'waiter', 'customer', 'orderType', 'deliveryApp')
             ->where('status', '<>', 'draft')
             ->orderBy('id', 'desc')
             ->where('orders.date_time', '>=', $start)
@@ -181,7 +287,64 @@ class Orders extends Component
             $orders->where('order_type', $this->filterOrderType);
         }
 
+        if (!empty($this->filterDeliveryApp)) {
+            if ($this->filterDeliveryApp === 'direct') {
+                $orders->whereNull('delivery_app_id');
+            } else {
+                $orders->where('delivery_app_id', $this->filterDeliveryApp);
+            }
+        }
+
         $orders = $orders->get();
+
+        // Check for new orders and show popup
+        $playSound = false;
+        $currentCount = $orders->count();
+
+        if (session()->has('orders_count') && session('orders_count') < $currentCount) {
+            $playSound = true;
+
+            $recentOrder = Order::with('table', 'customer')
+                ->where('status', '<>', 'draft')
+                ->orderBy('id', 'desc')
+                ->first();
+
+            if ($recentOrder) {
+                // Build order description
+                $orderDescription = __('New order received') . ': ' . $recentOrder->show_formatted_order_number;
+
+                // Add table info if it exists
+                if ($recentOrder->table && $recentOrder->table->table_code) {
+                    $orderDescription .= ' - ' . __('app.table') . ': ' . $recentOrder->table->table_code;
+                }
+                // Add customer info for delivery/pickup orders
+                else if ($recentOrder->customer && $recentOrder->customer->name) {
+                    $orderDescription .= ' - ' . $recentOrder->customer->name;
+                }
+
+                // Add order type
+                if ($recentOrder->order_type) {
+                    $orderType = ucfirst(str_replace('_', ' ', $recentOrder->order_type));
+                    $orderDescription .= ' (' . $orderType . ')';
+                }
+
+                $this->confirm($orderDescription, [
+                    'position' => 'center',
+                    'confirmButtonText' => __('View Order'),
+                    'confirmButtonColor' => '#16a34a',
+                    'onConfirmed' => 'viewOrder',
+                    'showCancelButton' => true,
+                    'cancelButtonText' => __('app.close'),
+                    'data' => [
+                        'orderID' => $recentOrder->id
+                    ]
+                ]);
+            }
+
+            session(['orders_count' => $currentCount]);
+        } else if (session()->has('orders_count')) {
+            session(['orders_count' => $currentCount]);
+        }
 
         $kotCount = $orders->filter(function ($order) {
             return $order->status == 'kot';
@@ -269,6 +432,7 @@ class Orders extends Component
             'deliveredOrdersCount' => count($deliveredOrders),
             'receiptSettings' => $receiptSettings, // Pass the fetched receipt settings to the view
             'orderID' => $this->orderID,
+            'playSound' => $playSound ?? false,
         ]);
     }
 }

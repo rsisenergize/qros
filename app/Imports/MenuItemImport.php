@@ -5,6 +5,7 @@ namespace App\Imports;
 use App\Models\MenuItem;
 use App\Models\ItemCategory;
 use App\Models\Menu;
+use App\Models\KotPlace;
 use Maatwebsite\Excel\Concerns\ToModel;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use Maatwebsite\Excel\Concerns\WithChunkReading;
@@ -15,7 +16,7 @@ use Maatwebsite\Excel\Concerns\SkipsErrors;
 use Maatwebsite\Excel\Concerns\SkipsOnFailure;
 use Maatwebsite\Excel\Concerns\SkipsFailures;
 use Maatwebsite\Excel\Concerns\WithBatchInserts;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 
 class MenuItemImport implements ToModel, WithHeadingRow, WithChunkReading, WithValidation, SkipsOnError, SkipsOnFailure, WithBatchInserts
 {
@@ -51,6 +52,27 @@ class MenuItemImport implements ToModel, WithHeadingRow, WithChunkReading, WithV
             // Map the row data using column mapping
             $mappedRow = $this->mapRowData($row);
 
+            // Validate required fields
+            if (empty($mappedRow['item_name'])) {
+                $this->results['skipped']++;
+                return null;
+            }
+
+            if (empty($mappedRow['category_name'])) {
+                $this->results['skipped']++;
+                return null;
+            }
+
+            if (empty($mappedRow['menu_name'])) {
+                $this->results['skipped']++;
+                return null;
+            }
+
+            if (empty($mappedRow['price']) || !is_numeric($mappedRow['price'])) {
+                $this->results['skipped']++;
+                return null;
+            }
+
             // Find category by name (using JSON query for translatable field)
             $category = ItemCategory::where('branch_id', $this->branchId)
                 ->whereRaw("JSON_EXTRACT(category_name, '$.en') = ?", [$mappedRow['category_name'] ?? ''])
@@ -65,7 +87,6 @@ class MenuItemImport implements ToModel, WithHeadingRow, WithChunkReading, WithV
                     'is_active' => true,
                 ]);
                 $this->results['categories_created']++;
-                Log::info("Auto-created category: {$mappedRow['category_name']} for branch {$this->branchId}");
             }
 
             // Find menu by name (using JSON query for translatable field)
@@ -82,7 +103,6 @@ class MenuItemImport implements ToModel, WithHeadingRow, WithChunkReading, WithV
                     'is_active' => true,
                 ]);
                 $this->results['menus_created']++;
-                Log::info("Auto-created menu: {$mappedRow['menu_name']} for branch {$this->branchId}");
             }
 
             // Check for duplicate menu item by name and category
@@ -92,8 +112,8 @@ class MenuItemImport implements ToModel, WithHeadingRow, WithChunkReading, WithV
                 ->first();
 
             if ($existingMenuItem) {
-                Log::info("Menu item already exists: " . ($mappedRow['item_name'] ?? ''));
                 $this->results['skipped']++;
+
                 return null;
             }
 
@@ -114,7 +134,6 @@ class MenuItemImport implements ToModel, WithHeadingRow, WithChunkReading, WithV
             $this->results['success']++;
             return new MenuItem($data);
         } catch (\Exception $e) {
-            Log::error("Error importing menu item: " . $e->getMessage(), ['row' => $row]);
             $this->results['failed']++;
             return null;
         }
@@ -122,15 +141,9 @@ class MenuItemImport implements ToModel, WithHeadingRow, WithChunkReading, WithV
 
     public function rules(): array
     {
-        return [
-            'item_name' => 'required|string|max:255',
-            'category_name' => 'required|string|max:255',
-            'menu_name' => 'required|string|max:255',
-            'price' => 'required|numeric|min:0',
-            'type' => 'nullable|string|in:veg,non-veg,egg',
-            'show_on_customer_site' => 'nullable|string|in:yes,no,1,0,true,false',
-            'description' => 'nullable|string|max:1000',
-        ];
+        // Return empty rules as we're handling validation in the model() method
+        // The actual validation happens after mapping and transforming the data
+        return [];
     }
 
     public function chunkSize(): int
@@ -190,18 +203,45 @@ class MenuItemImport implements ToModel, WithHeadingRow, WithChunkReading, WithV
 
         // Map the row data using the column mapping
         foreach ($this->columnMapping as $csvHeader => $mappedField) {
-            if (!empty($mappedField) && isset($row[$csvHeader])) {
-                // Clean the data and ensure proper encoding
-                $value = $row[$csvHeader];
-                if (is_string($value)) {
-                    // Remove BOM if present and trim whitespace
-                    $value = trim($value, "\xEF\xBB\xBF");
-                    $value = trim($value);
+            if (!empty($mappedField)) {
+                // Normalize the CSV header to match how WithHeadingRow processes it
+                // WithHeadingRow converts headers to lowercase with underscores
+                $normalizedHeader = $this->normalizeHeader($csvHeader);
+
+                // Try both the original header and normalized header
+                $value = null;
+                if (isset($row[$csvHeader])) {
+                    $value = $row[$csvHeader];
+                } elseif (isset($row[$normalizedHeader])) {
+                    $value = $row[$normalizedHeader];
                 }
-                $mappedRow[$mappedField] = $value;
+
+                // If found, clean the data and ensure proper encoding
+                if ($value !== null) {
+                    if (is_string($value)) {
+                        // Remove BOM if present and trim whitespace
+                        $value = trim($value, "\xEF\xBB\xBF");
+                        $value = trim($value);
+                    }
+                    $mappedRow[$mappedField] = $value;
+                }
             }
         }
 
         return $mappedRow;
     }
+
+    private function normalizeHeader($header)
+    {
+        // Convert to lowercase and replace spaces with underscores
+        // This matches how WithHeadingRow processes headers
+        // WithHeadingRow: lowercase, spaces to underscores, removes non-alphanumeric chars
+        $normalized = strtolower(trim($header));
+        $normalized = preg_replace('/[^a-z0-9]/', '_', $normalized);
+        // Remove consecutive underscores
+        $normalized = preg_replace('/_+/', '_', $normalized);
+        // Remove leading/trailing underscores
+        return trim($normalized, '_');
+    }
 }
+

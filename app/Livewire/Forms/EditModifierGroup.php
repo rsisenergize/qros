@@ -239,16 +239,7 @@ class EditModifierGroup extends Component
     {
         $this->validate($this->rules(), $this->messages());
 
-        // Prepare modifier options with all translations for Spatie
-        foreach ($this->modifierOptions as $index => &$option) {
-            $option['name'] = [];
-            foreach (array_keys($this->languages) as $lang) {
-                $option['name'][$lang] = $this->modifierOptionInput[$index][$lang] ?? '';
-            }
-            $option['name'] = array_filter($option['name'], 'trim');
-        }
-
-        // Update the modifier group
+            // Update the modifier group
         $modifierGroup = ModifierGroup::findOrFail($this->modifierGroupId);
         $modifierGroup->update([
             'name' => $this->translationNames[$this->globalLocale],
@@ -294,9 +285,18 @@ class EditModifierGroup extends Component
         }
 
         // Update existing or create new options
-        foreach ($this->modifierOptions as $option) {
+        foreach ($this->modifierOptions as $index => $option) {
+            // Prepare translations for this option
+            $optionNames = [];
+            foreach (array_keys($this->languages) as $lang) {
+                $translatedName = $this->modifierOptionInput[$index][$lang] ?? '';
+                if (!empty(trim($translatedName))) {
+                    $optionNames[$lang] = trim($translatedName);
+                }
+            }
+
             $optionData = [
-                'name' => $option['name'], // Spatie will cast this as array
+                'name' => $optionNames, // Spatie will cast this as array
                 'price' => $option['price'],
                 'is_available' => $option['is_available'],
                 'sort_order' => $option['sort_order'],

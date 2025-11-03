@@ -116,6 +116,16 @@ class Order extends BaseModel
         return $this->belongsTo(OrderType::class);
     }
 
+    public function deliveryApp(): BelongsTo
+    {
+        return $this->belongsTo(DeliveryPlatform::class, 'delivery_app_id');
+    }
+
+    public function deliveryPlatform(): BelongsTo
+    {
+        return $this->deliveryApp();
+    }
+
     public static function generateOrderNumber($branch)
     {
         // Check if order number settings exist and feature is enabled

@@ -15,6 +15,8 @@ class ItemModifiers extends Component
     public $modifiers = [];
     public $requiredModifiers = [];
     public $selectedVariationName;
+    public $orderTypeId;
+    public $deliveryAppId;
 
     public function mount()
     {
@@ -60,6 +62,15 @@ class ItemModifiers extends Component
 
             // Merge variation-specific modifiers with base modifiers
             $this->modifiers = collect($baseModifiers)->concat($variationSpecificModifiers);
+        }
+
+        // Set price context on all modifier options
+        if ($this->orderTypeId) {
+            foreach ($this->modifiers as $modifierGroup) {
+                foreach ($modifierGroup->options as $option) {
+                    $option->setPriceContext($this->orderTypeId, $this->deliveryAppId);
+                }
+            }
         }
 
     }

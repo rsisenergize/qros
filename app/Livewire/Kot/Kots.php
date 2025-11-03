@@ -4,11 +4,14 @@ namespace App\Livewire\Kot;
 
 use Carbon\Carbon;
 use App\Models\Kot;
+use App\Models\KotItem;
+use App\Models\OrderItem;
 use Livewire\Component;
+use App\Models\KotPlace;
 use App\Models\KotSetting;
 use Livewire\Attributes\On;
 use App\Models\KotCancelReason;
-use App\Models\KotPlace;
+use Illuminate\Support\Facades\Log;
 use Jantinnerezo\LivewireAlert\LivewireAlert;
 
 class Kots extends Component
@@ -31,15 +34,31 @@ class Kots extends Component
     public $showAllKitchens = false;
     public $selectedKitchen = '';
     public $search = '';
+    public $confirmDeleteKotItemModal = false;
+    public $selectedCancelKotItemId;
+    public $cancelItemReason;
+    public $cancelItemReasonText;
+
+    public function getSelectedKotItemProperty()
+    {
+        if (!$this->selectedCancelKotItemId) {
+            return null;
+        }
+
+        return KotItem::with(['menuItem', 'menuItemVariation', 'modifierOptions'])
+            ->find($this->selectedCancelKotItemId);
+    }
 
     public function mount($kotPlace = null, $showAllKitchens = false)
     {
+        $tz = timezone();
+        
         // Load date range type from cookie
         $this->kotSettings = KotSetting::first();
         $this->dateRangeType = request()->cookie('kots_date_range_type', 'today');
         $this->filterOrders = ($this->kotSettings->default_status == 'pending') ? 'pending_confirmation' : 'in_kitchen';
-        $this->startDate = now()->startOfWeek()->format('m/d/Y');
-        $this->endDate = now()->endOfWeek()->format('m/d/Y');
+        $this->startDate = Carbon::now($tz)->startOfWeek()->format('m/d/Y');
+        $this->endDate = Carbon::now($tz)->endOfWeek()->format('m/d/Y');
         $this->cancelReasons = KotCancelReason::where('cancel_kot', true)->get();
         $this->showAllKitchens = $showAllKitchens;
 
@@ -55,47 +74,50 @@ class Kots extends Component
         $this->setDateRange();
     }
 
+
     public function setDateRange()
     {
+        $tz = timezone();
+        
         switch ($this->dateRangeType) {
             case 'today':
-                $this->startDate = now()->startOfDay()->format('m/d/Y');
-                $this->endDate = now()->startOfDay()->format('m/d/Y');
+                $this->startDate = Carbon::now($tz)->startOfDay()->format('m/d/Y');
+                $this->endDate = Carbon::now($tz)->startOfDay()->format('m/d/Y');
                 break;
 
             case 'lastWeek':
-                $this->startDate = now()->subWeek()->startOfWeek()->format('m/d/Y');
-                $this->endDate = now()->subWeek()->endOfWeek()->format('m/d/Y');
+                $this->startDate = Carbon::now($tz)->subWeek()->startOfWeek()->format('m/d/Y');
+                $this->endDate = Carbon::now($tz)->subWeek()->endOfWeek()->format('m/d/Y');
                 break;
 
             case 'last7Days':
-                $this->startDate = now()->subDays(7)->format('m/d/Y');
-                $this->endDate = now()->startOfDay()->format('m/d/Y');
+                $this->startDate = Carbon::now($tz)->subDays(7)->format('m/d/Y');
+                $this->endDate = Carbon::now($tz)->startOfDay()->format('m/d/Y');
                 break;
 
             case 'currentMonth':
-                $this->startDate = now()->startOfMonth()->format('m/d/Y');
-                $this->endDate = now()->startOfDay()->format('m/d/Y');
+                $this->startDate = Carbon::now($tz)->startOfMonth()->format('m/d/Y');
+                $this->endDate = Carbon::now($tz)->startOfDay()->format('m/d/Y');
                 break;
 
             case 'lastMonth':
-                $this->startDate = now()->subMonth()->startOfMonth()->format('m/d/Y');
-                $this->endDate = now()->subMonth()->endOfMonth()->format('m/d/Y');
+                $this->startDate = Carbon::now($tz)->subMonth()->startOfMonth()->format('m/d/Y');
+                $this->endDate = Carbon::now($tz)->subMonth()->endOfMonth()->format('m/d/Y');
                 break;
 
             case 'currentYear':
-                $this->startDate = now()->startOfYear()->format('m/d/Y');
-                $this->endDate = now()->startOfDay()->format('m/d/Y');
+                $this->startDate = Carbon::now($tz)->startOfYear()->format('m/d/Y');
+                $this->endDate = Carbon::now($tz)->startOfDay()->format('m/d/Y');
                 break;
 
             case 'lastYear':
-                $this->startDate = now()->subYear()->startOfYear()->format('m/d/Y');
-                $this->endDate = now()->subYear()->endOfYear()->format('m/d/Y');
+                $this->startDate = Carbon::now($tz)->subYear()->startOfYear()->format('m/d/Y');
+                $this->endDate = Carbon::now($tz)->subYear()->endOfYear()->format('m/d/Y');
                 break;
 
             default:
-                $this->startDate = now()->startOfWeek()->format('m/d/Y');
-                $this->endDate = now()->endOfWeek()->format('m/d/Y');
+                $this->startDate = Carbon::now($tz)->startOfWeek()->format('m/d/Y');
+                $this->endDate = Carbon::now($tz)->endOfWeek()->format('m/d/Y');
                 break;
         }
     }
@@ -119,6 +141,16 @@ class Kots extends Component
         $this->selectedCancelKotId = $id;
     }
 
+    #[On('showCancelKotItemModal')]
+    public function showCancelKotItemModal($id)
+    {
+        $this->confirmDeleteKotItemModal = true;
+        $this->selectedCancelKotItemId = $id;
+
+        // Reset form fields
+        $this->cancelItemReason = null;
+        $this->cancelItemReasonText = null;
+    }
     public function updatedDateRangeType($value)
     {
         cookie()->queue(cookie('kots_date_range_type', $value, 60 * 24 * 30)); // 30 days
@@ -135,6 +167,20 @@ class Kots extends Component
                 'cancelButtonText' => __('app.close'),
             ]);
             return;
+        }
+
+        // If "Other" is selected, custom reason text is mandatory
+        if ($this->cancelReason) {
+            $selectedReason = KotCancelReason::find($this->cancelReason);
+            if ($selectedReason && strtolower($selectedReason->reason) === 'other' && !$this->cancelReasonText) {
+                $this->alert('error', __('modules.settings.customReasonRequired'), [
+                    'toast' => true,
+                    'position' => 'top-end',
+                    'showCancelButton' => false,
+                    'cancelButtonText' => __('app.close'),
+                ]);
+                return;
+            }
         }
 
         $kot = Kot::findOrFail($id);
@@ -157,6 +203,9 @@ class Kots extends Component
             if ($order->table) {
                 $order->table->update(['available_status' => 'available']);
             }
+        } else {
+            // Recalculate order totals if order is not cancelled
+            $this->recalculateOrderTotals($order);
         }
 
         // Optional: soft delete kot or destroy it
@@ -167,6 +216,124 @@ class Kots extends Component
         $this->reset(['cancelReason', 'cancelReasonText', 'selectedCancelKotId']);
 
         $this->dispatch('refreshKots');
+
+        // Dispatch event to refresh POS component if it's viewing this order
+        $this->dispatch('refreshPosOrder', orderId: $order->id);
+    }
+
+    public function deleteKotItem($itemId)
+    {
+        // Validate that a cancel reason is provided
+        if (!$this->cancelItemReason && !$this->cancelItemReasonText) {
+            $this->alert('error', __('modules.settings.cancelReasonRequired'), [
+                'toast' => true,
+                'position' => 'top-end',
+                'showCancelButton' => false,
+                'cancelButtonText' => __('app.close'),
+            ]);
+            return;
+        }
+
+        // If "Other" is selected, custom reason text is mandatory
+        if ($this->cancelItemReason) {
+            $selectedReason = KotCancelReason::find($this->cancelItemReason);
+            if ($selectedReason && strtolower($selectedReason->reason) === 'other' && !$this->cancelItemReasonText) {
+                $this->alert('error', __('modules.settings.customReasonRequired'), [
+                    'toast' => true,
+                    'position' => 'top-end',
+                    'showCancelButton' => false,
+                    'cancelButtonText' => __('app.close'),
+                ]);
+                return;
+            }
+        }
+
+        $kotItem = KotItem::findOrFail($itemId);
+        $kot = $kotItem->kot;
+        $order = $kot->order;
+
+        // Get the actual reason text from KotCancelReason model
+        $cancelReasonText = null;
+        if ($this->cancelItemReason) {
+            $cancelReason = KotCancelReason::find($this->cancelItemReason);
+            $cancelReasonText = $cancelReason ? $cancelReason->reason : null;
+        }
+
+        // Use custom text if provided, otherwise use the reason from the model
+        $finalReasonText = $this->cancelItemReasonText ?: $cancelReasonText;
+
+        // Update cancel reason info for the KOT item
+        Log::info('About to save with cancelItemReason: ' . ($this->cancelItemReason ?? 'null') . ', cancelItemReasonText: ' . ($this->cancelItemReasonText ?? 'null') . ', finalReasonText: ' . ($finalReasonText ?? 'null'));
+
+        $kotItem->cancel_reason_id = $this->cancelItemReason;
+        $kotItem->cancel_reason_text = $finalReasonText;
+        $kotItem->status = 'cancelled';
+
+        Log::info('KotItem before save:', [
+            'id' => $kotItem->id,
+            'cancel_reason_id' => $kotItem->cancel_reason_id,
+            'cancel_reason_text' => $kotItem->cancel_reason_text,
+            'status' => $kotItem->status
+        ]);
+
+        $result = $kotItem->save();
+
+        Log::info('KotItem save result: ' . ($result ? 'true' : 'false'));
+        Log::info('KotItem after save:', [
+            'id' => $kotItem->id,
+            'cancel_reason_id' => $kotItem->cancel_reason_id,
+            'cancel_reason_text' => $kotItem->cancel_reason_text,
+            'status' => $kotItem->status
+        ]);
+
+        // Handle corresponding order item if it exists
+        $this->handleOrderItemCancellation($kotItem, $order);
+
+        // Recalculate order totals
+        $this->recalculateOrderTotals($order);
+
+        // Check if all items in the KOT are now cancelled
+        $totalItems = KotItem::where('kot_id', $kot->id)->count();
+        $cancelledItems = KotItem::where('kot_id', $kot->id)->where('status', 'cancelled')->count();
+
+        if ($totalItems === $cancelledItems) {
+            // All items are cancelled, cancel the entire KOT
+            $kot->cancel_reason_id = $this->cancelItemReason;
+            $kot->cancel_reason_text = $finalReasonText;
+            $kot->status = 'cancelled';
+            $kot->save();
+
+            // Check if this is the only KOT in the order
+            $kotCounts = $order->kot()->whereNot('status', 'cancelled')->count();
+            if ($kotCounts === 0) {
+                $order->status = 'canceled';
+                $order->order_status = 'cancelled';
+                $order->save();
+
+                if ($order->table) {
+                    $order->table->update(['available_status' => 'available']);
+                }
+            }
+        } else {
+                   }
+
+        $this->confirmDeleteKotItemModal = false;
+        $this->reset(['cancelItemReason', 'cancelItemReasonText', 'selectedCancelKotItemId']);
+
+        $this->alert('success', __('modules.order.kotItemCancelledSuccessfully'), [
+            'toast' => true,
+            'position' => 'top-end',
+            'showCancelButton' => false,
+            'cancelButtonText' => __('app.close'),
+        ]);
+
+        $this->dispatch('refreshKots');
+
+        // Dispatch event to refresh POS component if it's viewing this order
+        $this->dispatch('refreshPosOrder', orderId: $order->id);
+
+        // Reload the page after a short delay to show the success message
+        $this->js('setTimeout(() => window.location.reload(), 500)');
     }
 
     public function render()
@@ -197,6 +364,7 @@ class Kots extends Component
                     'order',
                     'order.waiter',
                     'order.table',
+                    'order.orderType',
                     'items.menuItemVariation',
                     'items.modifierOptions',
                     'cancelReason'
@@ -253,6 +421,7 @@ class Kots extends Component
                     'order',
                     'order.waiter',
                     'order.table',
+                    'order.orderType',
                     'items.menuItemVariation',
                     'items.modifierOptions',
                     'cancelReason'
@@ -337,6 +506,116 @@ class Kots extends Component
             'cancelReasons' => $cancelReasons,
             'kitchens' => $kitchens,
             'showAllKitchens' => $this->showAllKitchens,
+        ]);
+    }
+
+    /**
+     * Handle order item cancellation when a KOT item is cancelled
+     */
+    private function handleOrderItemCancellation($kotItem, $order)
+    {
+        // Find corresponding order item by matching menu item, variation, quantity, and modifiers
+        $orderItemQuery = OrderItem::where('order_id', $order->id)
+            ->where('menu_item_id', $kotItem->menu_item_id)
+            ->where('menu_item_variation_id', $kotItem->menu_item_variation_id)
+            ->where('quantity', $kotItem->quantity);
+
+        // If there's a linked order item, use it
+        if ($kotItem->order_item_id) {
+            $orderItem = OrderItem::find($kotItem->order_item_id);
+        } else {
+            // Find by matching criteria
+            $orderItem = $orderItemQuery->first();
+        }
+
+        if ($orderItem) {
+            // Mark the order item as cancelled or delete it
+            // For now, we'll delete it to match the KOT item behavior
+            $orderItem->delete();
+        }
+    }
+
+    /**
+     * Recalculate order totals based on remaining active KOT items
+     */
+    private function recalculateOrderTotals($order)
+    {
+        $subTotal = 0;
+        $total = 0;
+        $totalTaxAmount = 0;
+
+        // Calculate totals from remaining active KOT items
+        foreach ($order->kot as $kot) {
+            foreach ($kot->items->where('status', '!=', 'cancelled') as $item) {
+                $menuItemPrice = $item->menuItem->price ?? 0;
+                $variationPrice = $item->menuItemVariation ? $item->menuItemVariation->price : 0;
+                $basePrice = $variationPrice ?: $menuItemPrice;
+
+                // Add modifier prices
+                $modifierPrice = $item->modifierOptions->sum('price');
+                $itemTotal = ($basePrice + $modifierPrice) * $item->quantity;
+
+                $subTotal += $itemTotal;
+                $total += $itemTotal;
+            }
+        }
+
+        // Apply discount if exists
+        $discountAmount = 0;
+        if ($order->discount_type === 'percent') {
+            $discountAmount = round(($subTotal * $order->discount_value) / 100, 2);
+        } elseif ($order->discount_type === 'fixed') {
+            $discountAmount = min($order->discount_value, $subTotal);
+        }
+
+        $discountedTotal = $total - $discountAmount;
+
+        // Add extra charges
+        foreach ($order->extraCharges ?? [] as $charge) {
+            if (method_exists($charge, 'getAmount')) {
+                $total += $charge->getAmount($discountedTotal);
+            }
+        }
+
+        // Add tip and delivery fee
+        if ($order->tip_amount > 0) {
+            $total += $order->tip_amount;
+        }
+
+        if ($order->delivery_fee > 0) {
+            $total += $order->delivery_fee;
+        }
+
+        // Apply discount
+        $total -= $discountAmount;
+
+        // Calculate taxes if needed
+        if ($order->tax_mode === 'item') {
+            // For item-level tax, we need to recalculate from remaining order items
+            $remainingOrderItems = OrderItem::where('order_id', $order->id)->get();
+            $totalTaxAmount = $remainingOrderItems->sum('tax_amount');
+
+            if (restaurant()->tax_inclusive) {
+                $subTotal -= $totalTaxAmount;
+            } else {
+                $total += $totalTaxAmount;
+            }
+        } elseif ($order->tax_mode === 'order') {
+            // For order-level tax, calculate from order taxes
+            $orderTaxes = $order->taxes;
+            foreach ($orderTaxes as $tax) {
+                $taxAmount = $tax->calculateTax($discountedTotal);
+                $totalTaxAmount += $taxAmount;
+            }
+            $total += $totalTaxAmount;
+        }
+
+        // Update the order
+        $order->update([
+            'sub_total' => $subTotal,
+            'total' => $total,
+            'discount_amount' => $discountAmount,
+            'total_tax_amount' => $totalTaxAmount,
         ]);
     }
 }

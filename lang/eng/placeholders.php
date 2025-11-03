@@ -5,7 +5,7 @@ return array (
   'searchMenus' => 'Search your menu here',
   'searchMenuItems' => 'Search your menu item here',
   'menuItemNamePlaceholder' => 'e.g., Margherita Pizza',
-  'itemVariationPlaceholder' => 'e.g., Small',
+  'itemVariationPlaceholder' => 'e.g., Small, Medium, Large',
   'itemDescriptionPlaceholder' => 'e.g., A classic Italian pizza with fresh tomatoes and basil.',
   'categoryNamePlaceholder' => 'e.g., Desserts',
   'searchItemCategory' => 'Search your item category here',
@@ -78,4 +78,5 @@ return array (
   'headerTextPlaceHolder' => 'Enter your custom header text here...',
   'tableLockTimeoutPlaceholder' => 'Enter timeout in minutes. Default is 10 minutes.',
   'featureDescriptionPlaceHolder' => 'Enter feature description here...',
+  'appNamePlaceHolder' => 'e.g., Swiggy',
 );

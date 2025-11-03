@@ -14,18 +14,24 @@ class kotCard extends Component
     public $printer;
     public $cancelReasons;
     public $showAllKitchens;
+    public $showStatusModal;
+    public $selectedItemId;
+    public $selectedItemStatus;
 
     /**
      * Create a new component instance.
      */
 
     //
-    public function __construct($kot, $kotSettings, $cancelReasons = null, $showAllKitchens = false)
+    public function __construct($kot, $kotSettings, $cancelReasons = null, $showAllKitchens = false, $showStatusModal = false, $selectedItemId = null, $selectedItemStatus = null)
     {
         $this->kot = $kot;
         $this->kotSettings = $kotSettings;
         $this->cancelReasons = $cancelReasons;
         $this->showAllKitchens = $showAllKitchens;
+        $this->showStatusModal = $showStatusModal;
+        $this->selectedItemId = $selectedItemId;
+        $this->selectedItemStatus = $selectedItemStatus;
     }
 
     /**

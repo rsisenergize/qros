@@ -42,7 +42,7 @@
 
                                     @if($this->hasModule('Menu Item'))
                                         @if(user_can('Show Menu Item'))
-                                            @livewire('sidebar-dropdown-menu', ['name' => __('menu.menuItem'), 'link' => route('menu-items.index'), 'active' => request()->routeIs(['menu-items.index', 'menu-items.bulk-import', 'menu-items.entities.sort'])])
+                                            @livewire('sidebar-dropdown-menu', ['name' => __('menu.menuItem'), 'link' => route('menu-items.index'), 'active' => request()->routeIs(['menu-items.index', 'menu-items.bulk-import', 'menu-items.entities.sort', 'menu-items.create', 'menu-items.edit'])])
                                         @endif
                                     @endif
 
@@ -54,7 +54,7 @@
 
                                     @if($this->hasModule('Menu Item'))
                                         @if(user_can('Show Menu Item'))
-                                            @livewire('sidebar-dropdown-menu', ['name' => __('menu.modifierGroups'), 'link' => route('modifier-groups.index'), 'active' => request()->routeIs('modifier-groups.index')])
+                                            @livewire('sidebar-dropdown-menu', ['name' => __('menu.modifierGroups'), 'link' => route('modifier-groups.index'), 'active' => request()->routeIs('modifier-groups.index', 'modifier-groups.create', 'modifier-groups.edit')])
                                             @livewire('sidebar-dropdown-menu', ['name' => __('menu.itemModifiers'), 'link' => route('item-modifiers.index'), 'active' => request()->routeIs('item-modifiers.index')])
                                         @endif
                                     @endif
@@ -156,6 +156,7 @@
                                     @livewire('sidebar-dropdown-menu', ['name' => __('menu.salesReport'), 'link' => route('reports.sales'), 'active' => request()->routeIs('reports.sales')])
                                     @livewire('sidebar-dropdown-menu', ['name' => __('menu.itemReport'), 'link' => route('reports.item'), 'active' => request()->routeIs('reports.item')])
                                     @livewire('sidebar-dropdown-menu', ['name' => __('menu.categoryReport'), 'link' => route('reports.category'), 'active' => request()->routeIs('reports.category')])
+                                    @livewire('sidebar-dropdown-menu', ['name' => __('menu.deliveryAppReport'), 'link' => route('reports.delivery'), 'active' => request()->routeIs('reports.delivery')])
                                     @if ($this->hasModule('Expense'))
                                         @livewire('sidebar-dropdown-menu', ['name' => __('menu.expenseReports'), 'link' => route('reports.expenseReports'), 'active' => request()->routeIs('reports.expenseReports')])
                                     @endif

@@ -10,4 +10,15 @@ class ModifierGroupController extends Controller
     {
         return view('modifier_groups.index');
     }
+
+    public function create()
+    {
+        return view('modifier_groups.create');
+    }
+
+    public function edit($id)
+    {
+        
+        return view('modifier_groups.edit', compact('id'));
+    }
 }

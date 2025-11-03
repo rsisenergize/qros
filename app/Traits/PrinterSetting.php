@@ -13,6 +13,7 @@ use App\Models\PrintJob;
 use App\Events\PrintJobCreated;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\KotController;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 trait PrinterSetting
 {
@@ -32,8 +33,18 @@ trait PrinterSetting
         $this->printerSetting = $printerSetting;
 
 
-        // First generate the KOT image
-        $this->generateKotImage($kotId, $kotPlaceId);
+        $kotPlaceId = $kotPlaceId ?? 1;
+        $width = $this->getPrintWidth(); // 80mm for fullWidth approach
+        $thermal = true;
+        // Generate the KOT content using KotController to avoid duplication
+        $content = (new KotController())->printKot($kotId, $kotPlaceId, $width, $thermal)->render();
+
+        if ($this->checkGeneratePdf()) {
+            $this->generateKotPdf($kotId, $content);
+        } else {
+            $this->generateKotImage($kotId, $kotPlaceId, $content);
+        }
+
 
         // Then proceed with the original print logic
         $this->executeKotPrint($kotId, $kotPlaceId, $alsoPrintOrder);
@@ -42,32 +53,35 @@ trait PrinterSetting
     /**
      * Generate KOT image using html-to-image JavaScript approach
      */
-    public function generateKotImage($kotId, $kotPlaceId = null)
+    public function generateKotImage($kotId, $kotPlaceId = null, $content)
     {
-        Log::info("generateKotImage called for KOT ID: {$kotId}, Place ID: {$kotPlaceId}");
+        //  Log::info("generateKotImage called for KOT ID: {$kotId}, Place ID: {$kotPlaceId}");
 
         try {
             // Add a small delay to prevent race conditions when multiple KOTs are printed simultaneously
             usleep(200000); // 200ms delay
-
-            $kotPlaceId = $kotPlaceId ?? 1;
-            $width = $this->getPrintWidth(); // 80mm for fullWidth approach
-            $thermal = true;
-
-            // Generate the KOT content using KotController to avoid duplication
-            $content = (new KotController())->printKot($kotId, $kotPlaceId, $width, $thermal)->render();
 
             // Use html-to-image approach by dispatching a JavaScript event
             // This will trigger the image capture in the frontend
             $this->dispatch('saveKotImageFromPrint', $kotId, $kotPlaceId, $content);
 
             // Log success
-            Log::info("KOT image save event dispatched for KOT ID: {$kotId}");
+            // Log::info("KOT image save event dispatched for KOT ID: {$kotId}");
         } catch (\Exception $e) {
-            Log::error("Failed to dispatch KOT image save event: " . $e->getMessage());
-            Log::error("Stack trace: " . $e->getTraceAsString());
+            // Log::error("Failed to dispatch KOT image save event: " . $e->getMessage());
+            // Log::error("Stack trace: " . $e->getTraceAsString());
             // Don't throw exception to avoid breaking the print process
         }
+    }
+
+    private function generateKotPdf($kotId, $content)
+    {
+        $width = $this->getPrintWidth();
+        $paperWidthInPoints = $width * 2.85;
+        $paperHeightInPoints = 800;
+        $pdf = Pdf::loadHTML($content)
+            ->setPaper([0, 0, $paperWidthInPoints, $paperHeightInPoints], 'portrait');
+        $pdf->save(public_path('user-uploads/print/kot-' . $kotId . '.pdf'));
     }
 
     /**
@@ -83,12 +97,16 @@ trait PrinterSetting
             throw new \Exception(__('messages.noActiveKotPrinterConfigured'));
         }
 
+
         $kot = Kot::with('items', 'order.waiter', 'table')->find($kotId);
 
+        if ($this->checkGeneratePdf()) {
+            $this->imageFilename = 'kot-' . $kotId . '.pdf';
+        } else {
+            $this->imageFilename = 'kot-' . $kotId . '.png';
+        }
 
-
-        $this->imageFilename = 'kot-' . $kotId . '.png';
-        $this->createPrintJobRecord($kot->branch_id);
+        $this->createPrintJobRecord($kot->branch_id, $kot->branch->restaurant_id);
 
         if ($alsoPrintOrder) {
             $kot = Kot::findOrFail($kotId);
@@ -135,8 +153,18 @@ trait PrinterSetting
         $this->printerSetting = $printerSetting;
 
 
-        // First generate the Order image
-        $this->generateOrderImage($orderId);
+        $width = $this->getPrintWidth(); // 80mm for fullWidth approach
+        $thermal = true;
+
+        // Generate the Order content using OrderController to avoid duplication
+        $content = (new OrderController())->printOrder($orderId, $width, $thermal)->render();
+
+        if ($this->checkGeneratePdf()) {
+            $this->generateOrderPdf($orderId, $content);
+        } else {
+            $this->generateOrderImage($orderId, $content);
+        }
+
 
         // Then proceed with the original print logic
         $this->executeOrderPrint($orderId);
@@ -145,20 +173,13 @@ trait PrinterSetting
     /**
      * Generate Order image using html-to-image JavaScript approach
      */
-    private function generateOrderImage($orderId)
+    private function generateOrderImage($orderId, $content)
     {
         Log::info("generateOrderImage called for Order ID: {$orderId}");
 
         try {
             // Add a delay to prevent conflicts with KOT image generation
             usleep(500000); // 500ms delay
-
-            $width = $this->getPrintWidth(); // 80mm for fullWidth approach
-            $thermal = true;
-
-            // Generate the Order content using OrderController to avoid duplication
-            $content = (new OrderController())->printOrder($orderId, $width, $thermal)->render();
-
 
             // Use html-to-image approach by dispatching a JavaScript event
             // This will trigger the image capture in the frontend
@@ -171,6 +192,19 @@ trait PrinterSetting
             Log::error("Stack trace: " . $e->getTraceAsString());
             // Don't throw exception to avoid breaking the print process
         }
+    }
+
+    private function generateOrderPdf($orderId, $content)
+    {
+        $width = $this->getPrintWidth();
+        // Calculate paper width in points (1mm = 2.83465 points)
+        // Common thermal printer widths: 58mm, 80mm
+        $paperWidthInPoints = $width * 2.83;
+        $paperHeightInPoints = 800; // Dynamic height, will be adjusted by content
+
+        $pdf = Pdf::loadHTML($content)
+            ->setPaper([0, 0, $paperWidthInPoints, $paperHeightInPoints], 'portrait');
+        $pdf->save(public_path('user-uploads/print/order-' . $orderId . '.pdf'));
     }
 
     /**
@@ -194,11 +228,15 @@ trait PrinterSetting
 
     public function printOrderThermal($orderId)
     {
-        $this->imageFilename = 'order-' . $orderId . '.png';
+        if ($this->checkGeneratePdf()) {
+            $this->imageFilename = 'order-' . $orderId . '.pdf';
+        } else {
+            $this->imageFilename = 'order-' . $orderId . '.png';
+        }
 
         $order = $this->loadOrderWithRelations($orderId);
 
-        $this->createPrintJobRecord($order->branch_id);
+        $this->createPrintJobRecord($order->branch_id, $order->branch->restaurant_id);
         $this->alert('success', __('modules.kot.print_success'));
     }
 
@@ -225,17 +263,16 @@ trait PrinterSetting
     }
 
 
-    private function createPrintJobRecord($branchId = null)
+    private function createPrintJobRecord($branchId = null, $restaurantId = null)
     {
         $printerSetting = $this->printerSetting;
 
         $printJob = PrintJob::create([
             'image_filename' => $this->imageFilename,
-            'restaurant_id' => restaurant()->id,
+            'restaurant_id' => $restaurantId,
             'branch_id' => $branchId,
             'status' => 'pending',
             'printer_id' => $printerSetting->id ?? null,
-            'payload' => [],
         ]);
 
         // Dispatch event for print job creation
@@ -254,5 +291,35 @@ trait PrinterSetting
             'thermal112mm' => 112,
             default => 80,
         };
+    }
+
+
+    public function ifMobileDevice()
+    {
+        $isMobile = false;
+
+        if (request()->header('User-Agent')) {
+            $agent = strtolower(request()->header('User-Agent'));
+            $isMobile = preg_match('/mobile|android|iphone|ipad|phone/i', $agent);
+        }
+
+        return $isMobile ?? false;
+    }
+
+    public function ifDesktopDevice()
+    {
+        return !$this->ifMobileDevice();
+    }
+
+    private function checkGeneratePdf()
+    {
+        $currencySymbol = restaurant()?->currency?->currency_symbol ?? '';
+
+        return ($this->printerSetting->print_type == 'pdf' || $this->ifMobileDevice());
+    }
+
+    private function hasUnicode($string)
+    {
+        return mb_check_encoding($string, 'UTF-8') && preg_match('/[^\x00-\x7F]/', $string);
     }
 }

@@ -98,8 +98,6 @@ class CustomConfigProvider extends ServiceProvider
         } else {
             Config::set('broadcasting.default', 'null');
         }
-
-        // dd(Config::get('broadcasting.connections.pusher'));
     }
 
     /**

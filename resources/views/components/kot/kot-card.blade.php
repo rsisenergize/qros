@@ -1,3 +1,4 @@
+
 <div>
     <div @class([
         'group flex flex-col gap-3 border bg-white shadow-sm rounded-lg hover:shadow-md transition dark:bg-gray-700 dark:border-gray-600 p-3',
@@ -11,7 +12,7 @@
                     </div>
                 @endif
                 <div class="text-sm font-medium text-gray-800 dark:text-neutral-400">
-                    {{ $kot->items_count }} @lang('modules.menu.item')
+                    {{ $kot->items->where('status', '!=', 'cancelled')->count() }} @lang('modules.menu.item')
                 </div>
             </div>
             <div class="flex flex-col items-end gap-1">
@@ -138,9 +139,9 @@
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
-                    @foreach ($kot->items as $item)
+                    @foreach ($kot->items->where('status', '!=', 'cancelled') as $item)
                         <tr>
-                            <td @class(['p-3',  'bg-green-50 dark:bg-green-800/30' => $item->status == 'ready'])>
+                            <td @class(['p-2',  'bg-green-50 dark:bg-green-800/30' => $item->status == 'ready'])>
                                 <div class="flex flex-col">
                                     <div class="flex items-center gap-1 text-xs text-gray-900 dark:text-white">
                                         @if ($item->status == 'cooking')
@@ -178,35 +179,51 @@
                                     @endif
                                 </div>
                             </td>
-                            <td @class(['p-3 pl-0 text-right font-medium text-gray-900 dark:text-white', 'bg-green-50 dark:bg-green-800/30' => $item->status == 'ready'])>
-
+                            <td @class(['p-2 pl-0 text-right font-medium text-gray-900 dark:text-white', 'bg-green-50 dark:bg-green-800/30' => $item->status == 'ready'])>
                                 @if($kotSettings->enable_item_level_status)
-                                    <div class="flex flex-col gap-1">
-                                        <select
-                                            wire:change="changeKotItemStatus({{ $item->id }}, $event.target.value)"
-                                            class="text-xs border border-gray-300 rounded-md px-2 py-1 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                            value="{{ $item->status ?? 'pending' }}"
+                                    <div class="flex items-center justify-end gap-1">
+                                        {{-- Status Button --}}
+                                        <button
+                                            wire:click="openStatusModal({{ $item->id }}, '{{ $item->status ?? 'pending' }}')"
+                                            @class([
+                                                'inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-colors',
+                                                'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200 border border-yellow-300 dark:border-yellow-700 hover:bg-yellow-200 dark:hover:bg-yellow-800' => ($item->status ?? 'pending') == 'pending',
+                                                'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 border border-blue-300 dark:border-blue-700 hover:bg-blue-200 dark:hover:bg-blue-800' => $item->status == 'cooking',
+                                                'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 border border-green-300 dark:border-green-700 hover:bg-green-200 dark:hover:bg-green-800' => $item->status == 'ready',
+                                            ])
+                                            type="button"
+                                            title="@lang('app.changeStatus')"
                                         >
-                                            <option value="pending" {{ ($item->status ?? 'pending') == 'pending' ? 'selected' : '' }}>
-                                                @lang('modules.order.pending_confirmation')
-                                            </option>
-                                            <option value="cooking" {{ $item->status == 'cooking' ? 'selected' : '' }}>
+                                            @if(($item->status ?? 'pending') == 'pending')
+                                                <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"></path>
+                                                </svg>
+                                                @lang('modules.order.pending_confirmation_short')
+                                            @elseif($item->status == 'cooking')
+                                                <img src="{{ asset('img/cooking-icon.svg') }}" alt="cooking" class="w-3 h-3">
                                                 @lang('modules.order.start_cooking')
-                                            </option>
-                                            <option value="ready" {{ $item->status == 'ready' ? 'selected' : '' }}>
+                                            @elseif($item->status == 'ready')
+                                                <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 16 16">
+                                                    <path d="M8.97 4.97a.75.75 0 0 1 1.07 1.05l-3.99 4.99a.75.75 0 0 1-1.08.02L2.324 8.384a.75.75 0 1 1 1.06-1.06l2.094 2.093L8.95 4.992zm-.92 5.14.92.92a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 1 0-1.091-1.028L9.477 9.417l-.485-.486z"/>
+                                                </svg>
                                                 @lang('modules.order.markAsReady')
-                                            </option>
-                                        </select>
+                                            @endif
+                                        </button>
 
-                                        @if($item->status == 'ready')
-                                            <div class="flex items-center justify-center mt-1">
-                                                <span class="inline-flex items-center gap-1 text-sm text-green-500">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="w-4 h-4 bi bi-check-all" viewBox="0 0 16 16">
-                                                        <path d="M8.97 4.97a.75.75 0 0 1 1.07 1.05l-3.99 4.99a.75.75 0 0 1-1.08.02L2.324 8.384a.75.75 0 1 1 1.06-1.06l2.094 2.093L8.95 4.992zm-.92 5.14.92.92a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 1 0-1.091-1.028L9.477 9.417l-.485-.486z"/>
-                                                    </svg>
-                                                    @lang('modules.order.ready')
-                                                </span>
-                                            </div>
+                                        {{-- Delete Button --}}
+                                        @if(user_can('Delete Order'))
+                                            <button
+                                                wire:click="$dispatch('showCancelKotItemModal', { id: {{ $item->id }} })"
+                                                class="inline-flex items-center justify-center p-0.5 rounded bg-red-100 text-red-800 dark:bg-red-700 dark:text-red-200 border border-red-400 hover:bg-red-200 transition"
+                                                type="button"
+                                                title="@lang('app.cancel')"
+                                                style="width: 24px; height: 24px;"
+                                            >
+                                                <!-- Cancel Icon -->
+                                                <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                                                </svg>
+                                            </button>
                                         @endif
                                     </div>
                                 @endif
@@ -329,6 +346,101 @@
                     </x-danger-button>
                 @endif
 
+        </div>
+    </div>
+
+    {{-- Status Selection Modal --}}
+    <div x-data="{ showModal: @entangle('showStatusModal') }" x-show="showModal" x-cloak style="display: none;">
+        <div class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true" x-show="showModal" @keydown.escape.window="showModal = false">
+            <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+                <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true"></div>
+
+                <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+
+                <div class="inline-block align-bottom bg-white dark:bg-gray-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+                    <div class="bg-white dark:bg-gray-800 px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                        <div class="sm:flex sm:items-start">
+                            <div class="mt-3 text-center sm:mt-0 sm:text-left w-full">
+                                <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-white flex items-center gap-2" id="modal-title">
+                                    <svg class="h-5 w-5 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    @lang('app.changeStatus')
+                                </h3>
+                                <div class="mt-4">
+                                    <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                                        @lang('app.selectNewStatus')
+                                    </p>
+
+                                    <div class="space-y-2">
+                                        {{-- Pending Status --}}
+                                        <button
+                                            wire:click="updateItemStatus('pending')"
+                                            @class([
+                                                'w-full flex items-center gap-3 px-4 py-3 rounded-lg border text-left transition-colors',
+                                                'bg-yellow-50 border-yellow-300 text-yellow-800 dark:bg-yellow-900 dark:border-yellow-700 dark:text-yellow-200' => $selectedItemStatus == 'pending',
+                                                'bg-gray-50 border-gray-300 text-gray-700 hover:bg-gray-100 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-600' => $selectedItemStatus != 'pending'
+                                            ])
+                                        >
+                                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"></path>
+                                            </svg>
+                                            <div>
+                                                <div class="font-medium">@lang('modules.order.pending_confirmation')</div>
+                                                <div class="text-xs opacity-75">@lang('modules.order.pending_confirmation_desc')</div>
+                                            </div>
+                                        </button>
+
+                                        {{-- Cooking Status --}}
+                                        <button
+                                            wire:click="updateItemStatus('cooking')"
+                                            @class([
+                                                'w-full flex items-center gap-3 px-4 py-3 rounded-lg border text-left transition-colors',
+                                                'bg-blue-50 border-blue-300 text-blue-800 dark:bg-blue-900 dark:border-blue-700 dark:text-blue-200' => $selectedItemStatus == 'cooking',
+                                                'bg-gray-50 border-gray-300 text-gray-700 hover:bg-gray-100 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-600' => $selectedItemStatus != 'cooking'
+                                            ])
+                                        >
+                                            <img src="{{ asset('img/cooking-icon.svg') }}" alt="cooking" class="w-5 h-5">
+                                            <div>
+                                                <div class="font-medium">@lang('modules.order.start_cooking')</div>
+                                                <div class="text-xs opacity-75">@lang('modules.order.start_cooking_desc')</div>
+                                            </div>
+                                        </button>
+
+                                        {{-- Ready Status --}}
+                                        <button
+                                            wire:click="updateItemStatus('ready')"
+                                            @class([
+                                                'w-full flex items-center gap-3 px-4 py-3 rounded-lg border text-left transition-colors',
+                                                'bg-green-50 border-green-300 text-green-800 dark:bg-green-900 dark:border-green-700 dark:text-green-200' => $selectedItemStatus == 'ready',
+                                                'bg-gray-50 border-gray-300 text-gray-700 hover:bg-gray-100 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-600' => $selectedItemStatus != 'ready'
+                                            ])
+                                        >
+                                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 16 16">
+                                                <path d="M8.97 4.97a.75.75 0 0 1 1.07 1.05l-3.99 4.99a.75.75 0 0 1-1.08.02L2.324 8.384a.75.75 0 1 1 1.06-1.06l2.094 2.093L8.95 4.992zm-.92 5.14.92.92a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 1 0-1.091-1.028L9.477 9.417l-.485-.486z"/>
+                                            </svg>
+                                            <div>
+                                                <div class="font-medium">@lang('modules.order.markAsReady')</div>
+                                                <div class="text-xs opacity-75">@lang('modules.order.markAsReady_desc')</div>
+                                            </div>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-gray-50 dark:bg-gray-700 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                        <button
+                            wire:click="closeStatusModal"
+                            x-on:click="showModal = false"
+                            type="button"
+                            class="w-full inline-flex justify-center rounded-md border border-gray-300 dark:border-gray-600 shadow-sm px-4 py-2 bg-white dark:bg-gray-800 text-base font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm"
+                        >
+                            @lang('app.cancel')
+                        </button>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 

@@ -101,7 +101,18 @@
                                 </div>
                             </div>
                             @if ($order->order_type == 'delivery')
-                                <div>
+                                <div class="space-y-3">
+                                    @if ($order->deliveryPlatform)
+                                        <div class="inline-flex flex-col gap-1 text-sm font-semibold text-gray-700 dark:text-gray-300">
+                                            <div class="inline-flex items-center gap-2">
+                                                @if ($order->deliveryPlatform->logo_url)
+                                                    <img src="{{ $order->deliveryPlatform->logo_url }}" alt="{{ $order->deliveryPlatform->name }}" class="w-5 h-5 rounded">
+                                                @endif
+                                                <span class="text-sm">{{ $order->deliveryPlatform->name }}</span>
+                                            </div>
+                                        </div>
+                                    @endif
+                                    
                                     @if ($order->deliveryExecutive)
                                         <div
                                             class="inline-flex flex-col gap-1 text-sm font-semibold text-gray-700 dark:text-gray-300">

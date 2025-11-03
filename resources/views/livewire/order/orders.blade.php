@@ -31,6 +31,14 @@
                         <option value="pickup">@lang('modules.order.pickup')</option>
                     </x-select>
 
+                    <x-select class="w-40 text-sm" wire:model.live.debounce.250ms='filterDeliveryApp'>
+                        <option value="">@lang('modules.report.allDeliveryApps')</option>
+                        <option value="direct">@lang('modules.report.directDelivery')</option>
+                        @foreach ($deliveryApps as $app)
+                            <option value="{{ $app->id }}">{{ $app->name }}</option>
+                        @endforeach
+                    </x-select>
+
                 </div>
             </div>
         </div>
@@ -165,6 +173,13 @@
 
     </div>
 
+    {{-- Sound notification for new orders --}}
+    @if ($playSound)
+    <script>
+        new Audio("{{ asset('sound/new_order.wav')}}").play();
+    </script>
+    @endif
+
     @script
     <script>
         const datepickerEl1 = document.getElementById('datepicker-range-start');
@@ -253,6 +268,15 @@
 
                 window.PUSHER.connection.bind('reconnecting', () => {
                     console.log('🔄 Pusher orders reconnecting...');
+                });
+
+                // Listen for Livewire events for new orders (works even without Pusher)
+                Livewire.on('newOrderCreated', (data) => {
+                    console.log('✅ Livewire event received for new order!', data);
+                    // Play sound immediately for new order
+                    new Audio("{{ asset('sound/new_order.wav')}}").play();
+                    // Refresh the component to show new order
+                    $wire.call('refreshNewOrders');
                 });
 
                 window.PUSHER.connection.bind('reconnected', () => {
@@ -388,13 +412,17 @@
                 });
 
                 pusherChannel.bind('order.created', function(data) {
-                    console.log('🎉 Pusher orders: Order created via Pusher:', data);
+                    console.log('🎉 Pusher orders: New order created via Pusher:', data);
                     console.log('📊 Pusher orders: Order creation details:', {
                         order_id: data.order_id,
+                        order_number: data.order_number,
                         timestamp: new Date().toISOString(),
                         event_type: 'order.created'
                     });
-                    $wire.$refresh();
+                    // Play sound for new order
+                    new Audio("{{ asset('sound/new_order.wav')}}").play();
+                    // Trigger handleNewOrder to show popup
+                    $wire.call('handleNewOrder', data);
                 });
 
                 // Debug: show all event bindings on the channel
@@ -550,6 +578,20 @@
             console.log('🧹 All Pusher connections cleared');
             console.log('💡 Reload the page to reconnect with fresh connections');
         }
+
+                // Listen for Livewire events on document level for new order notifications
+                document.addEventListener('livewire:init', () => {
+                    console.log('🔧 Setting up new order event listeners...');
+
+                    Livewire.on('newOrderCreated', (data) => {
+                        console.log('✅ Livewire event received for new order!', data);
+                        // Play sound immediately for new order
+                        new Audio("{{ asset('sound/new_order.wav')}}").play();
+                        // This ensures the event is caught even if the component listener fails
+                    });
+
+                    console.log('🔧 Order component event listeners ready!');
+                });
 
                 // Initialize real-time updates
                 document.addEventListener('livewire:initialized', () => {

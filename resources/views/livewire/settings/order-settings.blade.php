@@ -58,6 +58,18 @@
                         @lang('modules.settings.customOrderTypes')
                     </span>
                 </li>
+                <li class="me-2">
+                    <span wire:click="$set('activeTab', 'deliveryApps')"
+                        @class([
+                            'inline-flex items-center gap-x-1 cursor-pointer select-none p-4 border-b-2 rounded-t-lg hover:text-gray-600 hover:border-gray-300 dark:hover:text-gray-300',
+                            'border-transparent'=> $activeTab != 'deliveryApps',
+                            'active border-skin-base dark:text-skin-base dark:border-skin-base text-skin-base' => $activeTab == 'deliveryApps',
+                        ])>
+                        <!-- SVG: Delivery Apps Icon -->
+                        <svg class="w-5 h-5 text-current" height="32" viewBox="0 0 32 32" width="32" xmlns="http://www.w3.org/2000/svg"><g style="fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:10;stroke-width:2"><path d="M31.098 5.76H9.327v17.893h11.286m5.173 0h2.19V17.27M2.528 23.653H.902v-6.065l4.212-4.949h4.213v11.014H7.7"/><circle cx="23.2" cy="23.653" r="2.586"/><circle cx="5.114" cy="23.653" r="2.586"/><path d="M27.976 9.906h-4.777m6.827 4.149h-4.24"/></g></svg>
+                        @lang('modules.settings.deliveryApps')
+                    </span>
+                </li>
             </ul>
         </div>
 
@@ -271,6 +283,10 @@
 
                 @case('customOrderTypes')
                     @livewire('settings.customOrderTypes', ['settings' => $settings])
+                    @break
+
+                @case('deliveryApps')
+                    @livewire('settings.deliveryApps', ['settings' => $settings])
                     @break
             @endswitch
         </div>

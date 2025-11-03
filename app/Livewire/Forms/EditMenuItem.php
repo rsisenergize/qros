@@ -36,6 +36,7 @@ class EditMenuItem extends Component
     public $menus = [];
     public $variationName = [];
     public $variationPrice = [];
+    public $variationId = []; // Track variation IDs for existing variations
     public $menuItem;
     public $preparationTime;
     public $isAvailable;
@@ -94,6 +95,7 @@ class EditMenuItem extends Component
         foreach ($this->menuItem->variations as $key => $value) {
             $this->variationName[$key] = $value->variation;
             $this->variationPrice[$key] = $value->price;
+            $this->variationId[$key] = $value->id; // Track existing variation IDs
             $this->i = $key + 1;
             array_push($this->inputs, $this->i);
         }
@@ -132,6 +134,7 @@ class EditMenuItem extends Component
         unset($this->inputs[$i]);
         unset($this->variationName[$i]);
         unset($this->variationPrice[$i]);
+        unset($this->variationId[$i]); // Also remove variation ID
         unset($this->variationBreakdowns[$i]);
     }
 
@@ -314,7 +317,9 @@ class EditMenuItem extends Component
         }
 
         if ($this->hasVariations) {
-            MenuItemVariation::where('menu_item_id', $this->menuItem->id)->delete();
+            // Get all existing variation IDs
+            $existingVariationIds = $this->menuItem->variations()->pluck('id')->toArray();
+            $submittedVariationIds = [];
 
             foreach ($this->inputs as $key => $value) {
                 // Check if variation data exists and is not empty
@@ -322,12 +327,29 @@ class EditMenuItem extends Component
                     isset($this->variationName[$key]) && isset($this->variationPrice[$key]) &&
                     !empty(trim($this->variationName[$key])) && !empty(trim($this->variationPrice[$key]))
                 ) {
-                    MenuItemVariation::create([
+                    $variationData = [
                         'variation' => trim($this->variationName[$key]),
                         'price' => $this->variationPrice[$key],
                         'menu_item_id' => $this->menuItem->id
-                    ]);
+                    ];
+
+                    // Check if this is an existing variation (has ID) or a new one
+                    if (isset($this->variationId[$key]) && !empty($this->variationId[$key])) {
+                        // Update existing variation
+                        MenuItemVariation::where('id', $this->variationId[$key])->update($variationData);
+                        $submittedVariationIds[] = $this->variationId[$key];
+                    } else {
+                        // Create new variation
+                        $newVariation = MenuItemVariation::create($variationData);
+                        $submittedVariationIds[] = $newVariation->id;
+                    }
                 }
+            }
+
+            // Delete variations that were removed (not in submitted list)
+            $variationsToDelete = array_diff($existingVariationIds, $submittedVariationIds);
+            if (!empty($variationsToDelete)) {
+                MenuItemVariation::whereIn('id', $variationsToDelete)->delete();
             }
         } else {
             // If variations are now disabled, delete all old variations
@@ -362,6 +384,7 @@ class EditMenuItem extends Component
         $this->preparationTime = null;
         $this->variationName = [];
         $this->variationPrice = [];
+        $this->variationId = [];
         $this->variationBreakdowns = [];
         $this->taxInclusivePrice = null;
     }

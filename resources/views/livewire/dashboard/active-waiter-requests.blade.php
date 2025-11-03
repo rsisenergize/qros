@@ -19,55 +19,62 @@
 
 @push('scripts')
 
-    @if ($playSound)
-    <script>
-        new Audio("{{ asset('sound/new_order.wav')}}").play();
-    </script>
-    @endif
-
     @if(pusherSettings()->is_enabled_pusher_broadcast)
-        <script>
-            document.addEventListener('DOMContentLoaded', function () {
+        @script
+            <script>
+                document.addEventListener('DOMContentLoaded', function () {
 
                 const channel = PUSHER.subscribe('active-waiter-requests');
                 channel.bind('active-waiter-requests.created', function(data) {
                     @this.call('refreshActiveWaiterRequests');
-                    new Audio("{{ asset('sound/new_order.wav')}}").play();
                     console.log('✅ Pusher received data for active waiter requests!. Refreshing...');
-                });
-                PUSHER.connection.bind('connected', () => {
+                    });
+                    PUSHER.connection.bind('connected', () => {
                     console.log('✅ Pusher connected for Active Waiter Requests!');
-                });
-                channel.bind('pusher:subscription_succeeded', () => {
+                    });
+                    channel.bind('pusher:subscription_succeeded', () => {
                     console.log('✅ Subscribed to active-waiter-requests channel!');
+                    });
                 });
-            });
-        </script>
+            </script>
+        @endscript
     @endif
 
     <script>
-        // Listen for Livewire events for immediate notifications (works even without Pusher)
+        // Listen for custom event to play sound - setup immediately
         document.addEventListener('livewire:init', () => {
             console.log('🔧 Setting up waiter request event listeners...');
-            
+
+            // Listen for the play-waiter-sound event
+            window.addEventListener('play-waiter-sound', (event) => {
+                console.log('🔔 Playing waiter request sound! (window event)', event);
+                const audio = new Audio("{{ asset('sound/new_order.wav')}}");
+                audio.play().then(() => {
+                    console.log('✅ Sound played successfully!');
+                }).catch(error => {
+                    console.error('❌ Error playing sound:', error);
+                });
+            });
+
+            // Also listen via Livewire events
+            Livewire.on('play-waiter-sound', (event) => {
+                console.log('🔔 Playing waiter request sound! (Livewire event)', event);
+                const audio = new Audio("{{ asset('sound/new_order.wav')}}");
+                audio.play().then(() => {
+                    console.log('✅ Sound played successfully!');
+                }).catch(error => {
+                    console.error('❌ Error playing sound:', error);
+                });
+            });
+
+            // Listen for waiterRequestCreated event
             Livewire.on('waiterRequestCreated', (data) => {
                 console.log('✅ Livewire event received for waiter request!', data);
-                // Play sound immediately for new request
-                new Audio("{{ asset('sound/new_order.wav')}}").play();
-                // Refresh the component to show new count
+                // Refresh the component to show new count and popup
                 @this.call('refreshActiveWaiterRequests');
             });
-            
-            // Debug: Test if events are working
+
             console.log('🔧 Waiter request component event listeners ready!');
-        });
-        
-        // Also listen for events on the document level as backup
-        document.addEventListener('livewire:init', () => {
-            Livewire.on('waiterRequestCreated', (data) => {
-                console.log('🌐 Global Livewire event received for waiter request!', data);
-                // This ensures the event is caught even if the component listener fails
-            });
         });
     </script>
 @endpush

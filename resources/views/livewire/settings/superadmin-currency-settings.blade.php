@@ -33,7 +33,7 @@
                                 <th scope="col"
                                     class="py-2.5 px-4 text-xs font-medium text-left text-gray-500 uppercase dark:text-gray-400">
                                     @lang('modules.settings.currencyFormat')
-                                    <br>(Sample: 12345.6789)
+                                    <br>({{ __('modules.settings.sample') }}: 12345.6789)
                                 </th>
 
                                 <th scope="col"

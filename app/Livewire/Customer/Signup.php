@@ -36,11 +36,11 @@ class Signup extends Component
     public function mount()
     {
         $this->customer = customer();
-        
+
         // Initialize phone codes
         $this->allPhoneCodes = collect(Country::pluck('phonecode')->unique()->filter()->values());
         $this->filteredPhoneCodes = $this->allPhoneCodes;
-        
+
         // Set default phone code from restaurant
         $this->phoneCode = restaurant()->phone_code ?? $this->allPhoneCodes->first();
     }
@@ -73,6 +73,10 @@ class Signup extends Component
      */
     protected function isSmsLoginEnabled()
     {
+        if (!module_enabled('Sms')) {
+            return false;
+        }
+
         if (!in_array('Sms', restaurant_modules($this->restaurant))) {
             return false;
         }
@@ -132,8 +136,8 @@ class Signup extends Component
                 'name' => 'required|string',
                 'phoneCode' => 'required',
                 'phone' => 'required|string|unique:customers,phone',
-                'email' => $this->isSmsLoginEnabled() ? 'nullable|email|unique:customers,email' : 'required|email|unique:customers,email',            
-                ]);
+                'email' => $this->isSmsLoginEnabled() ? 'nullable|email|unique:customers,email' : 'required|email|unique:customers,email',
+            ]);
 
             $customer = new Customer();
             $customer->email = $this->email;
@@ -178,7 +182,6 @@ class Signup extends Component
                 'showCancelButton' => true,
                 'cancelButtonText' => __('app.close')
             ]);
-
         } else {
             $this->setCustomerDetail($customer);
         }
@@ -203,9 +206,9 @@ class Signup extends Component
 
         $this->showVerifcationCode = true;
         try {
-            if ($this->isSmsLoginEnabled()){
+            if ($this->isSmsLoginEnabled()) {
                 $this->customer->notify(new SendCustomerVerifyOtp($this->customer->email_otp));
-                return;  
+                return;
             }
             $this->customer->notify(new CustomerEmailVerify());
         } catch (\Exception $e) {

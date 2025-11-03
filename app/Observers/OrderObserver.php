@@ -8,6 +8,7 @@ use App\Events\TodayOrdersUpdated;
 use App\Models\Kot;
 use App\Events\OrderUpdated;
 use App\Events\OrderSuccessEvent;
+use App\Events\NewOrderCreated;
 
 
 class OrderObserver
@@ -31,6 +32,11 @@ class OrderObserver
 
         event(new OrderUpdated($order, 'created'));
         event(new TodayOrdersUpdated($todayKotCount));
+
+        // Dispatch event for new order notification
+        if ($order->status !== 'draft') {
+            event(new NewOrderCreated($order));
+        }
     }
 
     public function updated(Order $order)

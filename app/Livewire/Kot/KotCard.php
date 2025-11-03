@@ -11,7 +11,6 @@ use App\Traits\PrinterSetting;
 use App\Models\KotCancelReason;
 use App\Events\KotUpdated;
 use Jantinnerezo\LivewireAlert\LivewireAlert;
-use App\Enums\OrderStatus;
 
 class KotCard extends Component
 {
@@ -25,6 +24,11 @@ class KotCard extends Component
     public $kotPlace;
     public $showAllKitchens = false;
 
+    // Status modal properties
+    public $showStatusModal = false;
+    public $selectedItemId = null;
+    public $selectedItemStatus = null;
+
     use PrinterSetting;
 
     public function mount($kot, $kotSettings, $showAllKitchens = false)
@@ -32,108 +36,126 @@ class KotCard extends Component
         $this->kot = $kot;
         $this->kotSettings = $kotSettings;
         $this->showAllKitchens = $showAllKitchens;
+        $this->cancelReasons = KotCancelReason::where('cancel_kot', true)->get();
     }
+
 
     public function changeKotStatus($status)
     {
-        Kot::where('id', $this->kot->id)->update([
-            'status' => $status
-        ]);
-
-        $kotItem = Kot::find($this->kot->id);
-        $kotItem->status = $status;
-        $kotItem->save();
+        $kot = Kot::find($this->kot->id);
+        $kot->status = $status;
+        $kot->save();
 
         if ($status == 'food_ready') {
-            KotItem::where('kot_id', $this->kot->id)->update([
-                'status' => 'ready'
-            ]);
+            // Only update non-cancelled items
+            KotItem::where('kot_id', $this->kot->id)
+                ->where('status', '!=', 'cancelled')
+                ->update([
+                    'status' => 'ready'
+                ]);
         }
 
         if ($status == 'in_kitchen') {
-            KotItem::where('kot_id', $this->kot->id)->update([
-                'status' => 'cooking'
-            ]);
+            // Only update non-cancelled items
+            KotItem::where('kot_id', $this->kot->id)
+                ->where('status', '!=', 'cancelled')
+                ->update([
+                    'status' => 'cooking'
+                ]);
         }
 
-        // Update related order status
-        $order = $kotItem->order;
-
-        if ($order) {
-            switch ($status) {
-                case 'in_kitchen':
-                    $order->order_status = \App\Enums\OrderStatus::CONFIRMED;
-                    break;
-
-                case 'food_ready':
-                    if ($order->order_type === 'pickup') {
-                        $order->order_status = \App\Enums\OrderStatus::READY_FOR_PICKUP;
-                    } else {
-                        $order->order_status = \App\Enums\OrderStatus::PREPARING;
-                    }
-                    break;
-
-                case 'served':
-                    $order->order_status = \App\Enums\OrderStatus::SERVED;
-                    if (in_array($order->order_type, ['pickup', 'delivery'])) {
-                        $order->order_status = \App\Enums\OrderStatus::DELIVERED;
-                    }
-                    break;
-            }
-
-            $order->save();
-        }
+        // Refresh the KOT data
+        $this->kot = $kot->fresh(['items']);
 
         $this->dispatch('refreshKots');
     }
 
     public function changeKotItemStatus($itemId, $status)
     {
-
         $kotItem = KotItem::find($itemId);
         $kotItem->status = $status;
         $kotItem->save();
-        $order = $kotItem->kot->order;
 
-        $totalItems = KotItem::where('kot_id', $this->kot->id)->count();
-
-        // Check if all items are now 'pending'
-        $pendingItems = KotItem::where('kot_id', $this->kot->id)->where(function ($query) {
-            $query->where('status', 'pending')->orWhere('status', null);
-        })->count();
-
-        if ($totalItems > 0 && $pendingItems === $totalItems) {
-            // All items are pending, set KOT status to 'pending_confirmation'
-            $this->kot->status = 'pending_confirmation';
-            $this->kot->save();
-        } else {
-            // Check if all items are now 'cooking'
-            $cookingItems = KotItem::where('kot_id', $this->kot->id)->where('status', 'cooking')->count();
-
-            if ($totalItems > 0 && $cookingItems === $totalItems) {
-                // All items are cooking, set KOT status to 'in_kitchen'
-                $this->kot->status = 'in_kitchen';
-                $this->kot->save();
-                $order->order_status = \App\Enums\OrderStatus::CONFIRMED;
-                $order->save();
-            } else {
-                // Check if all items are ready, set KOT to food_ready
-                $readyItems = KotItem::where('kot_id', $this->kot->id)->where('status', 'ready')->count();
-
-                if ($totalItems > 0 && $readyItems === $totalItems) {
-                    $this->kot->status = 'food_ready';
-                    $this->kot->save();
-                    if ($order->order_type === 'pickup') {
-                        $order->order_status = \App\Enums\OrderStatus::READY_FOR_PICKUP;
-                    } else {
-                        $order->order_status = \App\Enums\OrderStatus::PREPARING;
-                    }
-                    $order->save();
-                }
-            }
-        }
+        // Auto-update KOT status based on item statuses
+        $this->updateKotStatusBasedOnItems();
 
         $this->dispatch('refreshKots');
+    }
+
+    private function updateKotStatusBasedOnItems()
+    {
+        $kot = Kot::find($this->kot->id);
+        $nonCancelledItems = $kot->items->where('status', '!=', 'cancelled');
+
+        if ($nonCancelledItems->isEmpty()) {
+            return; // No items to check
+        }
+
+        $totalItems = $nonCancelledItems->count();
+        $pendingItems = $nonCancelledItems->where('status', 'pending')->count();
+        $cookingItems = $nonCancelledItems->where('status', 'cooking')->count();
+        $readyItems = $nonCancelledItems->where('status', 'ready')->count();
+
+        $statusChanged = false;
+
+        // Only update KOT status when ALL items have the same status
+        // If all items are pending, keep KOT as pending_confirmation
+        if ($pendingItems === $totalItems && $kot->status !== 'pending_confirmation') {
+            $kot->status = 'pending_confirmation';
+            $kot->save();
+            $statusChanged = true;
+        }
+        // If all items are cooking, move KOT to in_kitchen
+        elseif ($cookingItems === $totalItems && $kot->status !== 'in_kitchen') {
+            $kot->status = 'in_kitchen';
+            $kot->save();
+            $statusChanged = true;
+        }
+        // If all items are ready, move KOT to food_ready
+        elseif ($readyItems === $totalItems && $kot->status !== 'food_ready') {
+            $kot->status = 'food_ready';
+            $kot->save();
+            $statusChanged = true;
+        }
+
+        // Refresh the KOT data if status changed
+        if ($statusChanged) {
+            $this->kot = $kot->fresh(['items']);
+        }
+    }
+
+    public function openStatusModal($itemId, $currentStatus)
+    {
+        $this->selectedItemId = $itemId;
+        $this->selectedItemStatus = $currentStatus;
+        $this->showStatusModal = true;
+    }
+
+    public function closeStatusModal()
+    {
+        $this->showStatusModal = false;
+        $this->selectedItemId = null;
+        $this->selectedItemStatus = null;
+    }
+
+    public function updateItemStatus($status)
+    {
+        if ($this->selectedItemId) {
+            $this->changeKotItemStatus($this->selectedItemId, $status);
+            $this->closeStatusModal();
+        }
+    }
+
+    public function reduceKotItemQuantity($itemId)
+    {
+        $kotItem = KotItem::find($itemId);
+
+        if ($kotItem && $kotItem->quantity > 1) {
+            $kotItem->quantity = $kotItem->quantity - 1;
+            $kotItem->save();
+
+            $this->dispatch('refreshKots');
+        }
     }
 
     public function deleteKot($id)
@@ -176,6 +198,7 @@ class KotCard extends Component
 
         $this->dispatch('refreshKots');
     }
+
 
     public function printKot($kot)
     {

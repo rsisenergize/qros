@@ -38,4 +38,14 @@ class KotItem extends BaseModel
     {
         return $this->belongsTo(Kot::class);
     }
+
+    public function cancelReason(): BelongsTo
+    {
+        return $this->belongsTo(KotCancelReason::class, 'cancel_reason_id');
+    }
+
+    public function orderItem(): BelongsTo
+    {
+        return $this->belongsTo(OrderItem::class);
+    }
 }

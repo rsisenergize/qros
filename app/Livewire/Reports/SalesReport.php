@@ -47,15 +47,17 @@ class SalesReport extends Component
 
     public function setDateRange()
     {
+        $tz = timezone();
+        
         $ranges = [
-            'today' => [now()->startOfDay(), now()->endOfDay()],
-            'lastWeek' => [now()->subWeek()->startOfWeek(), now()->subWeek()->endOfWeek()],
-            'last7Days' => [now()->subDays(7), now()->endOfDay()],
-            'currentMonth' => [now()->startOfMonth(), now()->endOfDay()],
-            'lastMonth' => [now()->subMonth()->startOfMonth(), now()->subMonth()->endOfMonth()],
-            'currentYear' => [now()->startOfYear(), now()->endOfDay()],
-            'lastYear' => [now()->subYear()->startOfYear(), now()->subYear()->endOfYear()],
-            'currentWeek' => [now()->startOfWeek(), now()->endOfWeek()],
+            'today' => [Carbon::now($tz)->startOfDay(), Carbon::now($tz)->endOfDay()],
+            'lastWeek' => [Carbon::now($tz)->subWeek()->startOfWeek(), Carbon::now($tz)->subWeek()->endOfWeek()],
+            'last7Days' => [Carbon::now($tz)->subDays(7), Carbon::now($tz)->endOfDay()],
+            'currentMonth' => [Carbon::now($tz)->startOfMonth(), Carbon::now($tz)->endOfDay()],
+            'lastMonth' => [Carbon::now($tz)->subMonth()->startOfMonth(), Carbon::now($tz)->subMonth()->endOfMonth()],
+            'currentYear' => [Carbon::now($tz)->startOfYear(), Carbon::now($tz)->endOfDay()],
+            'lastYear' => [Carbon::now($tz)->subYear()->startOfYear(), Carbon::now($tz)->subYear()->endOfYear()],
+            'currentWeek' => [Carbon::now($tz)->startOfWeek(), Carbon::now($tz)->endOfWeek()],
         ];
 
         [$start, $end] = $ranges[$this->dateRangeType] ?? $ranges['currentWeek'];

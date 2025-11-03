@@ -19,26 +19,30 @@ class Reservations extends Component
 
     public function mount()
     {
+        $tz = timezone();
+        
         // Load date range type from cookie
         $this->dateRangeType = request()->cookie('reservations_date_range_type', 'currentWeek');
-        $this->startDate = now()->startOfWeek()->format('m/d/Y');
-        $this->endDate = now()->endOfWeek()->format('m/d/Y');
+        $this->startDate = Carbon::now($tz)->startOfWeek()->format('m/d/Y');
+        $this->endDate = Carbon::now($tz)->endOfWeek()->format('m/d/Y');
 
         $this->setDateRange();
     }
 
     public function setDateRange()
     {
+        $tz = timezone();
+        
         $ranges = [
-            'today' => [now()->startOfDay(), now()->startOfDay()],
-            'lastWeek' => [now()->subWeek()->startOfWeek(), now()->subWeek()->endOfWeek()],
-            'nextWeek' => [now()->addWeek()->startOfWeek(), now()->addWeek()->endOfWeek()],
-            'last7Days' => [now()->subDays(7), now()->startOfDay()],
-            'currentMonth' => [now()->startOfMonth(), now()->endOfMonth()],
-            'lastMonth' => [now()->subMonth()->startOfMonth(), now()->subMonth()->endOfMonth()],
-            'currentYear' => [now()->startOfYear(), now()->startOfDay()],
-            'lastYear' => [now()->subYear()->startOfYear(), now()->subYear()->endOfYear()],
-            'default' => [now()->startOfWeek(), now()->endOfWeek()],
+            'today' => [Carbon::now($tz)->startOfDay(), Carbon::now($tz)->startOfDay()],
+            'lastWeek' => [Carbon::now($tz)->subWeek()->startOfWeek(), Carbon::now($tz)->subWeek()->endOfWeek()],
+            'nextWeek' => [Carbon::now($tz)->addWeek()->startOfWeek(), Carbon::now($tz)->addWeek()->endOfWeek()],
+            'last7Days' => [Carbon::now($tz)->subDays(7), Carbon::now($tz)->startOfDay()],
+            'currentMonth' => [Carbon::now($tz)->startOfMonth(), Carbon::now($tz)->endOfMonth()],
+            'lastMonth' => [Carbon::now($tz)->subMonth()->startOfMonth(), Carbon::now($tz)->subMonth()->endOfMonth()],
+            'currentYear' => [Carbon::now($tz)->startOfYear(), Carbon::now($tz)->startOfDay()],
+            'lastYear' => [Carbon::now($tz)->subYear()->startOfYear(), Carbon::now($tz)->subYear()->endOfYear()],
+            'default' => [Carbon::now($tz)->startOfWeek(), Carbon::now($tz)->endOfWeek()],
         ];
 
         [$start, $end] = $ranges[$this->dateRangeType] ?? $ranges['default'];
@@ -71,8 +75,10 @@ class Reservations extends Component
             return view('livewire.license-expire');
         }
 
-        $start = Carbon::createFromFormat('m/d/Y', $this->startDate)->startOfDay()->toDateTimeString();
-        $end = Carbon::createFromFormat('m/d/Y', $this->endDate)->endOfDay()->toDateTimeString();
+        $tz = timezone();
+        
+        $start = Carbon::createFromFormat('m/d/Y', $this->startDate, $tz)->startOfDay()->setTimezone('UTC')->toDateTimeString();
+        $end = Carbon::createFromFormat('m/d/Y', $this->endDate, $tz)->endOfDay()->setTimezone('UTC')->toDateTimeString();
 
         $reservations = Reservation::with('customer', 'table')
             ->orderBy('reservation_date_time', 'asc')

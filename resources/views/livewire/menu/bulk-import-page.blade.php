@@ -396,9 +396,9 @@
                             <tbody class="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
                                 @foreach($previewRows as $index => $row)
                                 <tr class="{{ $index % 2 === 0 ? 'bg-white dark:bg-gray-900' : 'bg-gray-50 dark:bg-gray-800' }}">
-                                    @foreach($row as $cell)
-                                    <td class="px-2 py-1.5 text-xs text-gray-900 dark:text-gray-100 whitespace-nowrap max-w-xs truncate" title="{{ $cell }}">
-                                        {{ $cell }}
+                                    @foreach($csvHeaders as $headerIndex => $header)
+                                    <td class="px-2 py-1.5 text-xs text-gray-900 dark:text-gray-100 whitespace-nowrap max-w-xs truncate" title="{{ $row[$headerIndex] ?? '' }}">
+                                        {{ $row[$headerIndex] ?? '' }}
                                     </td>
                                     @endforeach
                                 </tr>

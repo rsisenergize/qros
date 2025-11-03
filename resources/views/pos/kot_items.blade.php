@@ -1,23 +1,36 @@
 <div
     class="lg:w-6/12 flex flex-col bg-white border-l dark:border-gray-700 min-h-screen h-auto pr-4 px-2 py-4 dark:bg-gray-800">
-    <div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 mb-4">
-            @foreach ($orderTypes as $type)
-                <div @class([
-                    'flex-1 min-w-[110px] flex items-center justify-center gap-2 px-1 rounded-lg border transition-colors cursor-pointer text-sm font-medium',
-                    'border-gray-200 bg-white text-gray-900 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200 hover:bg-skin-base/10 dark:hover:bg-skin-base/20',
-                ]) wire:click="$set('orderType', '{{ $type->type }}')">
-                    <input id="order-type-{{ $type->slug }}" type="radio" wire:model.live="orderTypeId" value="{{ $type->id }}"
-                        class="w-4 h-4 accent-skin-base border-gray-300 focus:ring-skin-base dark:focus:ring-skin-base dark:bg-gray-600 dark:border-gray-500">
-                    <label for="order-type-{{ $type->slug }}"
-                        class="w-full py-2 text-sm font-medium text-gray-900 dark:text-gray-300 cursor-pointer select-none">
-                        {{ Str::headline($type->order_type_name) }}
-                    </label>
-                </div>
-            @endforeach
+    {{-- Order Type Indicator --}}
+    @if($orderTypeId)
+    <div class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 pb-2 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+            <span class="text-xs text-gray-500 dark:text-gray-400">@lang('modules.settings.orderType'):</span>
+            <span class="text-sm font-semibold text-gray-900 dark:text-white">
+                {{ \App\Models\OrderType::find($orderTypeId)?->order_type_name ?? ucfirst($orderType) }}
+            </span>
+
+            @if($orderTypeSlug === 'delivery' && $selectedDeliveryApp)
+                <span class="text-xs text-gray-500 dark:text-gray-400 mx-2">•</span>
+                <span class="text-xs text-gray-500 dark:text-gray-400">Platform:</span>
+                <span class="text-sm font-medium text-gray-900 dark:text-white">
+                    @if($selectedDeliveryApp === 'default')
+                        Default
+                    @else
+                        {{ \App\Models\DeliveryPlatform::find($selectedDeliveryApp)?->name ?? 'Unknown' }}
+                    @endif
+                </span>
+            @endif
         </div>
-        <div class="mt-4">
+
+        <button type="button" wire:click="changeOrderType" class="text-xs bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 px-3 py-2 rounded-full transition-all">
+            Change
+        </button>
+    </div>
+    @endif
+
+    <div>
+        <div class="mt-2">
             @if($customerId)
                 <div class="flex items-center gap-2">
                     <div class="font-semibold text-gray-700 dark:text-gray-300">{{ $customer->name }}</div>
@@ -365,7 +378,7 @@
 
     <div class="lg:min-w-20">
         <div class="h-auto p-4 mt-3 select-none text-center bg-gray-50 rounded space-y-4 dark:bg-gray-700">
-            @if (count($orderItemList) > 0)
+            @if (count($orderItemList) > 0 && user_can('Add Discount on POS'))
                 <div class="text-left">
                     <x-secondary-button wire:click="showAddDiscount">
                         <svg class="h-5 w-5 text-current me-1" width="24" height="24" viewBox="0 0 16 16"

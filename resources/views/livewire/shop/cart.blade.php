@@ -1,4 +1,67 @@
 <div>
+    <!-- Order Type Selection Modal -->
+    <x-dialog-modal wire:model.live="showOrderTypeModal" maxWidth="xl">
+        <x-slot name="title">
+            <div class="text-center">
+                <h2 class="text-2xl font-bold text-gray-900 dark:text-white">
+                    @lang('modules.order.selectOrderType')
+                </h2>
+                <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                    @lang('modules.order.selectOrderTypeDescription')
+                </p>
+            </div>
+        </x-slot>
+
+        <x-slot name="content">
+            <div class="grid grid-cols-1 gap-4 py-4 sm:grid-cols-2 lg:grid-cols-3">
+                @foreach($orderTypes ?? [] as $orderType)
+                    <button
+                        type="button"
+                        wire:click="selectOrderTypeFromModal({{ $orderType->id }})"
+                        class="flex flex-col items-center justify-center p-6 transition-all duration-200 border-2 border-gray-200 rounded-lg hover:border-skin-base hover:shadow-lg dark:border-gray-600 dark:hover:border-skin-base group"
+                        wire:key="modal-order-type-{{ $orderType->id }}"
+                    >
+                        <!-- Icon -->
+                        <div class="flex items-center justify-center w-16 h-16 mb-4 transition-colors rounded-full bg-gray-50 group-hover:bg-skin-base dark:bg-gray-700">
+                            <svg class="w-8 h-8 text-gray-600 transition-colors group-hover:text-white dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                @if($orderType->type === 'dine_in')
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+                                @elseif($orderType->type === 'delivery')
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/>
+                                @elseif($orderType->type === 'pickup')
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
+                                @endif
+                            </svg>
+                        </div>
+
+                        <!-- Order Type Name -->
+                        <span class="text-lg font-semibold text-gray-900 dark:text-white">
+                            {{ $orderType->order_type_name }}
+                        </span>
+
+                        @if($orderType->type === 'dine_in')
+                            <span class="mt-2 text-sm text-center text-gray-600 dark:text-gray-400">
+                                Enjoy your meal at our restaurant
+                            </span>
+                        @elseif($orderType->type === 'delivery')
+                            <span class="mt-2 text-sm text-center text-gray-600 dark:text-gray-400">
+                                Get it delivered to your doorstep
+                            </span>
+                        @elseif($orderType->type === 'pickup')
+                            <span class="mt-2 text-sm text-center text-gray-600 dark:text-gray-400">
+                                Order ahead and pick up later
+                            </span>
+                        @endif
+                    </button>
+                @endforeach
+            </div>
+        </x-slot>
+
+        <x-slot name="footer">
+            <!-- No footer buttons - force selection -->
+        </x-slot>
+    </x-dialog-modal>
+
     <section class="px-4 bg-white dark:bg-gray-900">
         @if($headerType === 'text')
             <div class="py-4 px-4 mx-auto max-w-screen-xl text-center lg:py-8 lg:px-12 bg-skin-base/[.1] dark:bg-gray-800 rounded-lg">
@@ -62,7 +125,8 @@
             </div>
         @endif
     </section>
-    @if (!$showCart)
+
+    @if (!$showCart && !$showOrderTypeModal)
 
         <div class="flex flex-col px-4 my-4" x-data="{ showAll: false }">
             <!-- Card Section -->
@@ -273,7 +337,7 @@
 
     @endif
 
-    @if ($showMenu)
+    @if ($showMenu && !$showOrderTypeModal)
         <div class="px-4 mb-32 space-y-4 lg:gap-8">
 
             @forelse ($menuItems as $key => $itemCat)
@@ -430,48 +494,8 @@
 
     @if ($showCart)
 
-        @if ($restaurant->allow_customer_orders)
-            <div class="flex my-4">
+        {{-- Order type selection removed - users select at the beginning via modal --}}
 
-                <ul
-                    class="flex items-center w-full mx-4 text-sm font-medium text-gray-900 bg-white border border-gray-200 divide-x rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white">
-                    @if ($restaurant->allow_dine_in_orders)
-                        <li class="w-full border-b border-gray-200 cursor-pointer sm:border-b-0 dark:border-gray-600">
-                            <div class="flex items-center ps-3">
-                                <input id="horizontal-list-radio-dine_in" wire:model.live='orderType' type="radio"
-                                    value="dine_in" name="list-radio"
-                                    class="w-4 h-4 bg-gray-100 border-gray-300 text-skin-base focus:ring-skin-base dark:focus:ring-skin-base dark:ring-offset-gray-700 dark:focus:ring-offset-gray-700 focus:ring-2 dark:bg-gray-600 dark:border-gray-500">
-                                <label for="horizontal-list-radio-dine_in"
-                                    class="w-full py-3 text-sm font-medium text-gray-900 ms-2 dark:text-gray-300">@lang('modules.order.dine_in')</label>
-                            </div>
-                        </li>
-                    @endif
-                    @if ($restaurant->allow_customer_delivery_orders)
-                        <li class="w-full border-b border-gray-200 cursor-pointer sm:border-b-0 dark:border-gray-600">
-                            <div class="flex items-center ps-3 ">
-                                <input id="horizontal-list-radio-delivery" wire:model.live='orderType' type="radio"
-                                    value="delivery" name="list-radio"
-                                    class="w-4 h-4 bg-gray-100 border-gray-300 text-skin-base focus:ring-skin-base dark:focus:ring-skin-base dark:ring-offset-gray-700 dark:focus:ring-offset-gray-700 focus:ring-2 dark:bg-gray-600 dark:border-gray-500">
-                                <label for="horizontal-list-radio-delivery"
-                                    class="w-full py-3 text-sm font-medium text-gray-900 ms-2 dark:text-gray-300">@lang('modules.order.delivery')</label>
-                            </div>
-                        </li>
-                    @endif
-
-                    @if ($restaurant->allow_customer_pickup_orders)
-                        <li class="w-full border-b border-gray-200 sm:border-b-0 dark:border-gray-600">
-                            <div class="flex items-center ps-3 ">
-                                <input id="horizontal-list-radio-pickup" wire:model.live='orderType' type="radio"
-                                    value="pickup" name="list-radio"
-                                    class="w-4 h-4 bg-gray-100 border-gray-300 text-skin-base focus:ring-skin-base dark:focus:ring-skin-base dark:ring-offset-gray-700 dark:focus:ring-offset-gray-700 focus:ring-2 dark:bg-gray-600 dark:border-gray-500">
-                                <label for="horizontal-list-radio-pickup"
-                                    class="w-full py-3 text-sm font-medium text-gray-900 ms-2 dark:text-gray-300">@lang('modules.order.pickup')</label>
-                            </div>
-                        </li>
-                    @endif
-                </ul>
-            </div>
-        @endif
         <div class="px-4 mt-4 space-y-4">
             @foreach ($orderItemList as $key => $item)
                 <div class="flex items-center justify-between gap-6 transition bg-white border rounded-lg shadow-sm hover:shadow-md dark:border-gray-600 dark:lg:bg-gray-900 dark:shadow-sm"
@@ -787,7 +811,7 @@
                             </div>
                         </div>
 
-                        @if (count($orderItemList) > 0 && $extraCharges)
+                        @if (count($orderItemList) > 0 && $extraCharges && count($extraCharges) > 0)
                             @foreach ($extraCharges as $charge)
                                 <div wire:key="extraCharge-{{ $loop->index }}"
                                     class="flex justify-between text-sm text-gray-500 dark:text-neutral-400">
@@ -804,7 +828,7 @@
                         @endif
 
                         @if ($taxMode == 'order')
-                            @foreach ($taxes as $item)
+                            @foreach ($taxes ?? [] as $item)
                                 <div class="flex justify-between text-sm text-gray-500 dark:text-gray-400">
                                     <div>
                                         {{ $item->tax_name }} ({{ $item->tax_percent }}%)
@@ -921,11 +945,12 @@
                     <div class="w-full h-auto pt-3 pb-4 text-center select-none"
                         wire:key='order-{{ microtime() }}'>
                         <div class="flex gap-2">
-                            @if (is_null($customer) && ($restaurant->customer_login_required || $orderType == 'delivery'))
+
+                            @if (is_null($customer) && ($restaurant->customer_login_required || $orderTypeSlug == 'delivery'))
                                 <x-button class="justify-center w-full" wire:click="$dispatch('showSignup')">
                                     @lang('app.next')
                                 </x-button>
-                            @elseif (is_null($customer) && $orderType == 'pickup')
+                            @elseif ($orderTypeSlug == 'pickup')
                                 <x-button class="justify-center w-full" wire:click="showPickupDateTime">
                                     @lang('app.next')
                                 </x-button>
@@ -933,11 +958,11 @@
                                 <div class="grid w-full grid-cols-2 gap-2">
                                     @php
                                         $isPaymentEnabled =
-                                            in_array($orderType, ['dine_in', 'delivery', 'pickup']) &&
+                                            in_array($orderTypeSlug, ['dine_in', 'delivery', 'pickup']) &&
                                             (($orderType == 'dine_in' && $paymentGateway->is_dine_in_payment_enabled) ||
-                                                ($orderType == 'delivery' &&
+                                                ($orderTypeSlug == 'delivery' &&
                                                     $paymentGateway->is_delivery_payment_enabled) ||
-                                                ($orderType == 'pickup' && $paymentGateway->is_pickup_payment_enabled));
+                                                ($orderTypeSlug == 'pickup' && $paymentGateway->is_pickup_payment_enabled));
 
                                         $showPayNow =
                                             $paymentGateway->is_qr_payment_enabled ||
@@ -1176,7 +1201,11 @@
 
         <x-slot name="content">
             @if ($menuItem)
-                @livewire('pos.itemVariations', ['menuItem' => $menuItem], key(str()->random(50)))
+                @livewire('pos.itemVariations', [
+                    'menuItem' => $menuItem,
+                    'orderTypeId' => $orderTypeId,
+                    'deliveryAppId' => null
+                ], key(str()->random(50)))
             @endif
         </x-slot>
 
@@ -1522,7 +1551,11 @@
 
         <x-slot name="content">
             @if ($selectedModifierItem)
-                @livewire('pos.itemModifiers', ['menuItemId' => $selectedModifierItem], key(str()->random(50)))
+                @livewire('pos.itemModifiers', [
+                    'menuItemId' => $selectedModifierItem,
+                    'orderTypeId' => $orderTypeId,
+                    'deliveryAppId' => null
+                ], key(str()->random(50)))
             @endif
         </x-slot>
     </x-dialog-modal>
@@ -1667,6 +1700,26 @@
                 });
                 rzp1.open();
             }
+        </script>
+    @endscript
+
+    @script
+        <script>
+            // Prevent closing order type modal by ESC or clicking outside
+            document.addEventListener('livewire:init', () => {
+                Livewire.on('showOrderTypeModal', (show) => {
+                    if (show) {
+                        // Disable closing modal
+                        const modal = document.querySelector('[x-data*="show"]');
+                        if (modal) {
+                            modal.addEventListener('click', function(e) {
+                                // Prevent click outside from closing
+                                e.stopPropagation();
+                            });
+                        }
+                    }
+                });
+            });
         </script>
     @endscript
 

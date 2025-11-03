@@ -3,6 +3,7 @@
 namespace App\Livewire\Dashboard;
 
 use App\Models\Order;
+use Carbon\Carbon;
 use Livewire\Component;
 
 class TodayOrderList extends Component
@@ -12,10 +13,12 @@ class TodayOrderList extends Component
 
     public function render()
     {
-        $start = now()->startOfDay()->toDateTimeString();
-        $end = now()->endOfDay()->toDateTimeString();
+        $tz = timezone();
+        
+        $start = Carbon::now($tz)->startOfDay()->setTimezone($tz)->toDateTimeString();
+        $end = Carbon::now($tz)->endOfDay()->setTimezone($tz)->toDateTimeString();
 
-        $orders = Order::withCount('items')->with('table', 'waiter')
+        $orders = Order::withCount('items')->with('table', 'waiter', 'orderType')
             ->where('status', '<>', 'canceled')
             ->where('status', '<>', 'draft')
             ->orderBy('id', 'desc')

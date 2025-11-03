@@ -712,11 +712,6 @@ class OrderDetail extends Component
             foreach ($this->order->items as $item) {
                 $totalTaxAmount += ($item->tax_amount ?? 0);
             }
-
-            if (!$isInclusive) {
-                // For exclusive taxes, add tax to total
-                $this->total += $totalTaxAmount;
-            }
         }
 
         // Start with subtotal + taxes
@@ -727,7 +722,7 @@ class OrderDetail extends Component
         if ($this->order->discount_type === 'percent') {
             $discountAmount = round(($this->subTotal * $this->order->discount_value) / 100, 2);
         } elseif ($this->order->discount_type === 'fixed') {
-            $discountAmount = $this->order->discount_value;
+            $discountAmount = min($this->order->discount_value, $this->subTotal);
         }
         $this->total -= $discountAmount;
 
