@@ -101,9 +101,9 @@ trait PrinterSetting
         $kot = Kot::with('items', 'order.waiter', 'table')->find($kotId);
 
         if ($this->checkGeneratePdf()) {
-            $this->imageFilename = 'kot-' . $kotId . '.pdf';
+            $this->imageFilename = 'kot-' . $kotId . $kotPlaceId . '.png';
         } else {
-            $this->imageFilename = 'kot-' . $kotId . '.png';
+            $this->imageFilename = 'kot-' . $kotId . $kotPlaceId . '.png';
         }
 
         $this->createPrintJobRecord($kot->branch_id, $kot->branch->restaurant_id);
