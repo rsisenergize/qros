@@ -1,7 +1,6 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use App\Http\Middleware\LocaleMiddleware;
 use Modules\Inventory\Http\Controllers\UnitController;
 use Modules\Inventory\Http\Controllers\InventoryItemController;
 use Modules\Inventory\Http\Controllers\InventoryItemCategoryController;
@@ -25,7 +24,7 @@ use Modules\Inventory\Http\Controllers\SupplierController;
 |
 */
 
-Route::middleware(['auth', config('jetstream.auth_session'), 'verified', LocaleMiddleware::class])->prefix('inventory')->group(function () {
+Route::middleware(['auth', config('jetstream.auth_session'), 'verified'])->prefix('inventory')->group(function () {
     Route::get('dashboard', [InventoryDashboardController::class, 'index'])->name('inventory.dashboard');
     Route::resource('units', UnitController::class);
     Route::resource('inventory-item-categories', InventoryItemCategoryController::class);

@@ -70,6 +70,43 @@
             </div>
         </div>
 
+        <!-- Entry Date and Time -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div class="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
+                <label for="entry_date" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    <div class="flex items-center space-x-2">
+                        <svg class="w-4 h-4 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                        </svg>
+                        <span>@lang("inventory::modules.stock.entryDate")</span>
+                    </div>
+                </label>
+                <div class="mt-1 relative rounded-md shadow-sm">
+                    <input type="date" wire:model="entryDate" id="entry_date" class="block w-full rounded-lg border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-4 py-2.5 text-gray-900 dark:text-white focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm transition-colors duration-200">
+                    @error('entryDate')
+                        <p class="mt-1 text-sm text-red-600 dark:text-red-500">{{ $message }}</p>
+                    @enderror
+                </div>
+            </div>
+
+            <div class="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
+                <label for="entry_time" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    <div class="flex items-center space-x-2">
+                        <svg class="w-4 h-4 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        <span>@lang("inventory::modules.stock.entryTime")</span>
+                    </div>
+                </label>
+                <div class="mt-1 relative rounded-md shadow-sm">
+                    <input type="time" wire:model="entryTime" id="entry_time" class="block w-full rounded-lg border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-4 py-2.5 text-gray-900 dark:text-white focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm transition-colors duration-200">
+                    @error('entryTime')
+                        <p class="mt-1 text-sm text-red-600 dark:text-red-500">{{ $message }}</p>
+                    @enderror
+                </div>
+            </div>
+        </div>
+
         <div class="grid grid-cols-1  gap-8">
             <!-- Item Selection -->
             <div class="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700">

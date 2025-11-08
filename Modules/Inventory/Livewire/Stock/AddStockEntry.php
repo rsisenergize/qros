@@ -9,6 +9,7 @@ use Modules\Inventory\Entities\Supplier;
 use App\Models\Branch;
 use Jantinnerezo\LivewireAlert\LivewireAlert;
 use Modules\Inventory\Entities\InventoryStock;
+use Carbon\Carbon;
 
 class AddStockEntry extends Component
 {
@@ -30,6 +31,8 @@ class AddStockEntry extends Component
     public $expirationDate;
     public $destinationInventoryItem;
     public $destinationInventoryItems = [];
+    public $entryDate;
+    public $entryTime;
 
     protected $listeners = [
         'item-selected' => 'onItemSelected',
@@ -42,6 +45,8 @@ class AddStockEntry extends Component
         $this->suppliers = Supplier::all();
         $this->branches = Branch::where('id', '!=', branch()->id)->get();
         $this->transactionType = 'IN';
+        $this->entryDate = now(timezone())->format('Y-m-d');
+        $this->entryTime = now(timezone())->format('H:i');
     }
 
     public function rules()
@@ -54,6 +59,8 @@ class AddStockEntry extends Component
             'branch' => 'required_if:transactionType,TRANSFER',
             'unitPurchasePrice' => 'required_if:transactionType,IN|numeric',
             'expirationDate' => 'required_if:transactionType,IN|date',
+            'entryDate' => 'required|date',
+            'entryTime' => 'required|date_format:H:i',
         ];
     }
 
@@ -67,8 +74,17 @@ class AddStockEntry extends Component
                 'wasteReason' => 'required_if:transactionType,WASTE',
                 'branch' => 'required_if:transactionType,TRANSFER',
                 'destinationInventoryItem' => 'required_if:transactionType,TRANSFER',
+                'entryDate' => 'required|date',
+                'entryTime' => 'required|date_format:H:i',
             ]
         );
+
+        // Combine date and time and convert to UTC
+        $entryDateTime = Carbon::createFromFormat(
+            'Y-m-d H:i',
+            $this->entryDate . ' ' . $this->entryTime,
+            timezone()
+        )->setTimezone('UTC');
 
         $stockEntry = new InventoryMovement();
         $stockEntry->branch_id = branch()->id;
@@ -81,6 +97,7 @@ class AddStockEntry extends Component
         $stockEntry->unit_purchase_price = $this->unitPurchasePrice;
         $stockEntry->added_by = user()->id;
         $stockEntry->expiration_date = $this->expirationDate;
+        $stockEntry->created_at = $entryDateTime;
         $stockEntry->save();
 
         $updatedStock = InventoryStock::where('inventory_item_id', $this->inventoryItem)
@@ -122,6 +139,7 @@ class AddStockEntry extends Component
             $destinationStockEntry->unit_purchase_price = $this->unitPurchasePrice;
             $destinationStockEntry->added_by = user()->id;
             $destinationStockEntry->expiration_date = $this->expirationDate;
+            $destinationStockEntry->created_at = $entryDateTime;
             $destinationStockEntry->saveQuietly();
     
         }

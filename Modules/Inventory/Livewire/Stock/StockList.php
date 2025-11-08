@@ -8,10 +8,14 @@ use Livewire\Attributes\On;
 use Modules\Inventory\Entities\InventoryItem;
 use Modules\Inventory\Entities\InventoryItemCategory;
 use Illuminate\Support\Facades\DB;
+use Jantinnerezo\LivewireAlert\LivewireAlert;
+use Modules\Inventory\Entities\Recipe;
+use App\Models\MenuItem;
+use Modules\Inventory\Exports\StockExport;
 
 class StockList extends Component
 {
-    use WithPagination;
+    use WithPagination, LivewireAlert;
 
     public $showAddStockEntry = false;
     public $search = '';
@@ -121,6 +125,31 @@ class StockList extends Component
     {
         $this->reset(['search', 'category', 'stockStatus']);
         $this->resetPage();
+    }
+
+    public function syncWithMenuItems()
+    {
+        $recipes = Recipe::join('inventory_items', 'recipes.inventory_item_id', '=', 'inventory_items.id')
+            ->where('inventory_items.branch_id', branch()->id)
+            ->get();
+
+        foreach ($recipes as $recipe) {
+            if ($recipe->inventoryItem->current_stock <= 0) {
+                foreach ($recipe->inventoryItem->menuItems as $menuItem) {
+                    $menuItem->update([
+                        'in_stock' => 0
+                    ]);
+                }
+            }
+        }
+
+        $this->alert('success', __('inventory::modules.stock.syncedWithMenuItemsSuccessfully'));
+    }
+
+    public function export()
+    {
+        return (new StockExport($this->search, $this->category, $this->stockStatus))
+            ->download('stock-inventory-' . now()->format('Y-m-d-H-i-s') . '.xlsx');
     }
 
     public function render()
