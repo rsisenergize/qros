@@ -860,7 +860,7 @@ class Cart extends Component
 
         $kot = Kot::create([
             'branch_id' => $this->shopBranch->id,
-            'kot_number' => (Kot::generateKotNumber($this->shopBranch) + 1),
+            'kot_number' => Kot::generateKotNumber($this->shopBranch),
             'order_id' => $order->id,
             'order_type_id' => $order->order_type_id,
             'token_number' => Kot::generateTokenNumber($this->shopBranch->id, $order->order_type_id),

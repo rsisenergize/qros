@@ -20,9 +20,25 @@ class KotController extends Controller
         return view('kot.index');
     }
 
-    public function printKot($id, $kotPlaceid = null, $width = 80, $thermal = false)
+    /*public function printKot($id, $kotPlaceid = null, $width = 80, $thermal = false)
     {
         $kot = Kot::with('items', 'order.waiter', 'table')->find($id);
+        $kotPlace = KotPlace::find($kotPlaceid);
+
+        return view('pos.printKot', compact('kot', 'kotPlaceid', 'width', 'thermal', 'kotPlace'));
+    }*/
+    public function printKot($id, $kotPlaceid = null, $width = 80, $thermal = false)
+    {
+        $kot = Kot::with([
+            'items' => function ($query) use ($kotPlaceid) {
+                $query->whereHas('menuItem', function ($query) use ($kotPlaceid) {
+                    $query->where('kot_place_id', $kotPlaceid);
+                });
+            },
+            'order.waiter',
+            'table'
+        ])->find($id);
+        
         $kotPlace = KotPlace::find($kotPlaceid);
 
         return view('pos.printKot', compact('kot', 'kotPlaceid', 'width', 'thermal', 'kotPlace'));

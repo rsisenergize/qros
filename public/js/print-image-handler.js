@@ -283,7 +283,7 @@ async function saveKotImageFromPrint(kotId, kotPlaceId, content) {
             },
             body: JSON.stringify({
                 image_base64: dataUrl,
-                kot_id: kotId,
+                kot_id: kotId+''+kotPlaceId,
                 width: actualWidth,
                 mono: true, // High-contrast B/W for thermal printing
             }),
