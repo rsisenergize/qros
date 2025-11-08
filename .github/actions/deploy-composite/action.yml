@@ -99,13 +99,8 @@ runs:
         echo "👁️ Caching views..."
         php artisan view:cache
         
-        # Only cache routes in production (route caching can cause issues)
-        if [[ "${{ inputs.env-name }}" == "prod" ]]; then
-          echo "🛣️ Caching routes..."
-          php artisan route:cache
-        else
-          echo "ℹ️ Skipping route cache for non-production environment"
-        fi
+        echo "ℹ️ Route caching disabled - using dynamic routes"
+        # Route caching disabled to prevent 404 issues with auth routes
 
         # Bring production back online
         if [[ "${{ inputs.env-name }}" == "prod" ]]; then
