@@ -33,11 +33,6 @@ class ActivateModuleCommand extends Command
      */
     public function handle()
     {
-        try {
-            Artisan::call('module:migrate Inventory');
-        } catch (\Exception $e) {
-            // Silent exception
-        }
 
         $restaurant = Restaurant::with('branches')->get();
 

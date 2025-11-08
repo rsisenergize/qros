@@ -1,3 +1,20 @@
+@php
+    // Set locale for authenticated users
+    if (session('locale')) {
+        \Illuminate\Support\Facades\App::setLocale(session('locale'));
+    } else {
+        $user = auth()->user();
+        if (isset($user)) {
+            \Illuminate\Support\Facades\App::setLocale($user?->locale ?? 'en');
+        } else {
+            try {
+                \Illuminate\Support\Facades\App::setLocale(session('locale') ?? global_setting()?->locale ?? 'en');
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\App::setLocale('en');
+            }
+        }
+    }
+@endphp
 <x-app-layout>
     <x-slot name="header">
         <div class="space-y-4">

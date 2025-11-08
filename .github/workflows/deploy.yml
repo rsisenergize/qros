@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:  # Allow manual triggering
 
 jobs:
   # ================================
@@ -41,7 +42,7 @@ jobs:
           rm -rf deploy-artifact
           mkdir -p deploy-artifact
 
-          # Copy Laravel files
+          # Copy Laravel files (including .htaccess)
           rsync -r --progress . deploy-artifact \
             --exclude=".git*" \
             --exclude="node_modules" \
@@ -50,47 +51,23 @@ jobs:
             --exclude="storage/app/public/*" \
             --exclude="storage/logs/*" \
             --exclude="storage/framework/*" \
-            --exclude="public/uploads/*"
+            --exclude="public/uploads/*" \
+            --include=".htaccess"
 
       - name: 📤 Upload Build Artifact
         uses: actions/upload-artifact@v4
         with:
           name: qros_build
           path: deploy-artifact
+          retention-days: 7
 
   # ================================
-  # 2️⃣ Deployment Jobs (Sequential)
+  # 2️⃣ Deployment Jobs
   # ================================
-  deploy-dev:
-    name: 🌱 Deploy to Dev
-    runs-on: ubuntu-latest
-    needs: build
-    environment: dev
-    steps:
-      - uses: actions/checkout@v4
-      
-      - uses: actions/download-artifact@v4
-        with:
-          name: qros_build
-          path: deploy-artifact
-
-      - name: Copy Dev Environment File
-        run: cp .env.dev deploy-artifact/.env
-
-      - name: Deploy via Composite Action
-        uses: ./.github/actions/deploy-composite
-        with:
-          env-name: dev
-          env-file: .env
-          ssh-host: ${{ secrets.SSH_HOST }}
-          ssh-user: ${{ secrets.SSH_USER }}
-          ssh-key: ${{ secrets.SSH_PRIVATE_KEY }}
-          deploy-path: ${{ secrets.DEPLOY_PATH_DEV }}
-
   deploy-test:
     name: 🧪 Deploy to Test
     runs-on: ubuntu-latest
-    needs: deploy-dev
+    needs: build
     environment:
       name: test
       url: https://test.qros.in
@@ -115,38 +92,11 @@ jobs:
           ssh-key: ${{ secrets.SSH_PRIVATE_KEY }}
           deploy-path: ${{ secrets.DEPLOY_PATH_TEST }}
 
-  deploy-preprod:
-    name: 🚀 Deploy to Preprod
-    runs-on: ubuntu-latest
-    needs: deploy-test
-    environment:
-      name: preprod
-      url: https://preprod.qros.in
-    steps:
-      - uses: actions/checkout@v4
-      
-      - uses: actions/download-artifact@v4
-        with:
-          name: qros_build
-          path: deploy-artifact
-
-      - name: Copy Preprod Environment File
-        run: cp .env.preprod deploy-artifact/.env
-
-      - name: Deploy via Composite Action
-        uses: ./.github/actions/deploy-composite
-        with:
-          env-name: preprod
-          env-file: .env
-          ssh-host: ${{ secrets.SSH_HOST }}
-          ssh-user: ${{ secrets.SSH_USER }}
-          ssh-key: ${{ secrets.SSH_PRIVATE_KEY }}
-          deploy-path: ${{ secrets.DEPLOY_PATH_PREPROD }}
-
   deploy-prod:
     name: 🏁 Deploy to Production
     runs-on: ubuntu-latest
-    needs: deploy-preprod
+    needs: deploy-test
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[deploy-prod]')
     environment:
       name: production
       url: https://qros.in

@@ -90,19 +90,16 @@ class RecipeForm extends Component
         $this->availableMenuItems = MenuItem::where('is_available', 1)
             ->where('branch_id', branch()->id)
             ->where(function ($query) {
-                // Menu items without any recipes
-                $query->whereNotIn('id', function ($subquery) {
-                    $subquery->select('menu_item_id')
-                        ->from('recipes')
-                        ->distinct();
+                // Case 1: Menu items without variations that don't have a base recipe
+                $query->where(function ($subQuery) {
+                    $subQuery->whereDoesntHave('variations')
+                        ->whereDoesntHave('recipes', function ($recipeQuery) {
+                            $recipeQuery->whereNull('menu_item_variation_id');
+                        });
                 })
-                // OR menu items with variations that don't have recipes for all variations
+                // Case 2: Menu items with variations where at least one variation doesn't have a recipe
                 ->orWhereHas('variations', function ($variationQuery) {
-                    $variationQuery->whereNotIn('id', function ($recipeQuery) {
-                        $recipeQuery->select('menu_item_variation_id')
-                            ->from('recipes')
-                            ->whereNotNull('menu_item_variation_id');
-                    });
+                    $variationQuery->whereDoesntHave('recipes');
                 });
             })
             ->get(['id', 'item_name']);
@@ -135,19 +132,16 @@ class RecipeForm extends Component
         $this->availableMenuItems = MenuItem::where('is_available', 1)
             ->where('branch_id', branch()->id)
             ->where(function ($query) {
-                // Menu items without any recipes
-                $query->whereNotIn('id', function ($subquery) {
-                    $subquery->select('menu_item_id')
-                        ->from('recipes')
-                        ->distinct();
+                // Case 1: Menu items without variations that don't have a base recipe
+                $query->where(function ($subQuery) {
+                    $subQuery->whereDoesntHave('variations')
+                        ->whereDoesntHave('recipes', function ($recipeQuery) {
+                            $recipeQuery->whereNull('menu_item_variation_id');
+                        });
                 })
-                // OR menu items with variations that don't have recipes for all variations
+                // Case 2: Menu items with variations where at least one variation doesn't have a recipe
                 ->orWhereHas('variations', function ($variationQuery) {
-                    $variationQuery->whereNotIn('id', function ($recipeQuery) {
-                        $recipeQuery->select('menu_item_variation_id')
-                            ->from('recipes')
-                            ->whereNotNull('menu_item_variation_id');
-                    });
+                    $variationQuery->whereDoesntHave('recipes');
                 });
             })
             ->get(['id', 'item_name']);

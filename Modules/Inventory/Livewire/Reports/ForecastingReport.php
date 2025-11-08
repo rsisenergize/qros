@@ -37,29 +37,23 @@ class ForecastingReport extends Component
 
     public function updatedPeriod()
     {
-        return $this->redirect(route('inventory.reports.forecasting', [
-            'period' => $this->period,
-            'item' => $this->selectedItem,
-            'search' => $this->searchTerm
-        ]));
+        $this->endDate = Carbon::now()->endOfDay();
+        $this->startDate = $this->endDate->copy()->subDays($this->period);
+        
+        $this->resetPage();
+        $this->loadReportData();
     }
 
     public function updatedSelectedItem()
     {
-        return $this->redirect(route('inventory.reports.forecasting', [
-            'period' => $this->period,
-            'item' => $this->selectedItem,
-            'search' => $this->searchTerm
-        ]));
+        $this->resetPage();
+        $this->loadReportData();
     }
 
     public function updatedSearchTerm()
     {
-        return $this->redirect(route('inventory.reports.forecasting', [
-            'period' => $this->period,
-            'item' => $this->selectedItem,
-            'search' => $this->searchTerm
-        ]));
+        $this->resetPage();
+        $this->loadReportData();
     }
 
     public function loadReportData()
