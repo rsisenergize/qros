@@ -96,11 +96,9 @@ runs:
         echo "⚡ Caching configuration..."
         php artisan config:cache
 
-        echo "👁️ Caching views..."
-        php artisan view:cache
-        
+        echo "ℹ️ View caching disabled - skipping to avoid component errors"
         echo "ℹ️ Route caching disabled - using dynamic routes"
-        # Route caching disabled to prevent 404 issues with auth routes
+        # View and route caching disabled to prevent errors
 
         # Bring production back online
         if [[ "${{ inputs.env-name }}" == "prod" ]]; then
