@@ -15,7 +15,7 @@ return new class extends Migration
             $table->foreign('branch_id')->references('id')->on('branches')->onDelete('cascade');
             
             $table->unsignedBigInteger('supplier_id');
-            $table->foreign('supplier_id')->references('id')->on('suppliers')->onDelete('restrict');
+            $table->foreign('supplier_id')->references('id')->on('suppliers')->onDelete('cascade');
             
             $table->date('order_date');
             $table->date('expected_delivery_date')->nullable();
@@ -24,7 +24,7 @@ return new class extends Migration
             
             $table->text('notes')->nullable();
             $table->unsignedBigInteger('created_by')->nullable();
-            $table->foreign('created_by')->references('id')->on('users')->onDelete('restrict');
+            $table->foreign('created_by')->references('id')->on('users')->onDelete('cascade');
             
             $table->timestamps();
         });
@@ -35,7 +35,7 @@ return new class extends Migration
             $table->foreign('purchase_order_id')->references('id')->on('purchase_orders')->onDelete('cascade');
             
             $table->unsignedBigInteger('inventory_item_id');
-            $table->foreign('inventory_item_id')->references('id')->on('inventory_items')->onDelete('restrict');
+            $table->foreign('inventory_item_id')->references('id')->on('inventory_items')->onDelete('cascade');
             
             $table->decimal('quantity', 10, 2);
             $table->decimal('received_quantity', 10, 2)->default(0);

@@ -13,19 +13,19 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('inventory_settings', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('restaurant_id')->constrained('restaurants')->cascadeOnDelete();
-            $table->boolean('allow_auto_purchase')->default(false);
-            $table->timestamps();
-        });
+        if (!Schema::hasTable('inventory_settings')) {
+            Schema::create('inventory_settings', function (Blueprint $table) {
+                $table->id();
+                $table->foreignId('restaurant_id')->constrained('restaurants')->cascadeOnDelete();
+                $table->boolean('allow_auto_purchase')->default(false);
+                $table->timestamps();
+            });
 
-        Schema::table('inventory_items', function (Blueprint $table) {
-            $table->foreignId('preferred_supplier_id')->nullable()->constrained('suppliers')->cascadeOnDelete();
-            $table->decimal('reorder_quantity', 16, 2)->default(0);
-        });
-
-        Artisan::call('inventory:activate');
+            Schema::table('inventory_items', function (Blueprint $table) {
+                $table->foreignId('preferred_supplier_id')->nullable()->constrained('suppliers')->cascadeOnDelete();
+                $table->decimal('reorder_quantity', 16, 2)->default(0);
+            });
+        }
     }
 
     /**

@@ -42,42 +42,26 @@ class TurnoverReport extends Component
         
         $this->endDate = Carbon::now()->endOfDay()->format('Y-m-d H:i:s');
         
-        return $this->redirect(route('inventory.reports.turnover', [
-            'period' => $this->period,
-            'startDate' => $this->startDate,
-            'endDate' => $this->endDate,
-            'search' => $this->searchTerm
-        ]));
+        $this->resetPage();
+        $this->loadReportData();
     }
 
     public function updatedStartDate()
     {
-        return $this->redirect(route('inventory.reports.turnover', [
-            'period' => $this->period,
-            'startDate' => $this->startDate,
-            'endDate' => $this->endDate,
-            'search' => $this->searchTerm
-        ]));
+        $this->resetPage();
+        $this->loadReportData();
     }
 
     public function updatedEndDate()
     {
-        return $this->redirect(route('inventory.reports.turnover', [
-            'period' => $this->period,
-            'startDate' => $this->startDate,
-            'endDate' => $this->endDate,
-            'search' => $this->searchTerm
-        ]));
+        $this->resetPage();
+        $this->loadReportData();
     }
 
     public function updatedSearchTerm()
     {
-        return $this->redirect(route('inventory.reports.turnover', [
-            'period' => $this->period,
-            'startDate' => $this->startDate,
-            'endDate' => $this->endDate,
-            'search' => $this->searchTerm
-        ]));
+        $this->resetPage();
+        $this->loadReportData();
     }
 
     public function loadReportData()
